@@ -59,17 +59,33 @@ class FastenerInspectionWorker(QThread):
                 class_res = self.local_classifier.classify(self.cv_img)
             else:
                 class_res = self.gemini_client.classify_image(self.cv_img, model_name=self.model_name)
-                if not class_res.get("success", False) and class_res.get("error") == "API_KEY_MISSING":
+                if not class_res.get("success", False):
+                    # A cloud outage must not send good parts to the reject bin: fall back to the offline engine
+                    cloud_problem = class_res.get("reason", "Cloud analysis failed.")
+                    app_logger.warning(f"Gemini classification unavailable, using offline engine: {cloud_problem}")
+                    is_local = True
                     class_res = self.local_classifier.classify(self.cv_img)
+                    class_res["reason"] = f"[Cloud AI unavailable: {cloud_problem}] {class_res.get('reason', '')}"
 
             category = class_res.get("category", CATEGORY_UNKNOWN)
             confidence = float(class_res.get("confidence", 0.0))
 
             # 2. Step 2: Calibrated Dimensional Measurement (OpenCV)
-            meas_res = dimension_engine.measure_fastener(self.cv_img, category)
+            # Measure the same object the classifier picked, not just the largest blob in the frame
+            meas_res = dimension_engine.measure_fastener(self.cv_img, category, roi_bbox=class_res.get("roi"))
 
             # 3. Step 3: Specification & Tolerance Verification
             verif_res = verification_engine.verify_and_decide(category, confidence, meas_res)
+
+            # The offline engine only matches outlines, so a shape whose size fits no fastener is not one
+            if is_local and verif_res.get("unrecognized"):
+                class_res["reason"] = (
+                    f"Outline resembles a {category.lower()}, but its size matches no configured fastener. "
+                    f"{class_res.get('reason', '')}"
+                )
+                category = CATEGORY_UNKNOWN
+                confidence = min(confidence, 0.30)
+                meas_res["category"] = CATEGORY_UNKNOWN
 
             # Combine into unified inspection packet
             inspection_packet: Dict[str, Any] = {
@@ -86,8 +102,8 @@ class FastenerInspectionWorker(QThread):
                 "outer_dia_mm": meas_res.get("outer_dia_mm", 0.0),
                 "decision": verif_res.get("decision", "REJECT"),
                 "detected_size": verif_res.get("matched_size", "Unknown"),
-                "assigned_tray": verif_res.get("assigned_tray", 10),
-                "servo_angle": verif_res.get("servo_angle", 180),
+                "assigned_tray": verif_res.get("assigned_tray", 0),
+                "servo_angle": verif_res.get("servo_angle", 0),
                 "reason": verif_res.get("reason", ""),
                 "inconsistency_detected": verif_res.get("inconsistency_detected", False),
                 "tolerance_errors": verif_res.get("tolerance_errors", []),
@@ -98,8 +114,8 @@ class FastenerInspectionWorker(QThread):
             # 4. Step 4: Persist in SQLite Database
             db_instance.log_inspection(inspection_packet)
 
-            # 5. Step 5: Dispatch Hardware Sorting Cycle if enabled
-            if self.auto_sort and inspection_packet["decision"] != "REINSPECT":
+            # 5. Step 5: Dispatch Hardware Sorting Cycle if enabled (bin 0 means there is nowhere to route the part)
+            if self.auto_sort and inspection_packet["decision"] != "REINSPECT" and inspection_packet["assigned_tray"] > 0:
                 hardware_manager.execute_sorting_cycle(
                     tray_id=inspection_packet["assigned_tray"],
                     servo_angle=inspection_packet["servo_angle"]
@@ -120,7 +136,7 @@ class FastenerClassifierManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._current_worker: Optional[FastenerInspectionWorker] = None
-        
+
         # Load persistent counters from SQLite database
         saved_counters = db_instance.load_batch_counters()
         self.counters = {cat: saved_counters.get(cat, 0) for cat in ALLOWED_CATEGORIES}

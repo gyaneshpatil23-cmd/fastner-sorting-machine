@@ -16,6 +16,8 @@ from backend.config import (
     CONFIDENCE_HIGH_THRESHOLD, CONFIDENCE_MEDIUM_THRESHOLD,
     MODEL_LOCAL_OFFLINE, get_gemini_api_key
 )
+from dotenv import set_key
+
 from backend.gemini_client import GeminiVisionClient
 from backend.logger import app_logger, log_session_step
 
@@ -24,16 +26,17 @@ class ConnectionTestWorker(QThread):
     """Background worker for testing Gemini connection or validating Local Offline Engine."""
     result_ready = Signal(bool, str)
 
-    def __init__(self, model_name: str, parent=None):
+    def __init__(self, model_name: str, api_key: str = "", parent=None):
         super().__init__(parent)
         self.model_name = model_name
+        self.api_key = api_key
 
     def run(self):
         if self.model_name == MODEL_LOCAL_OFFLINE:
             self.result_ready.emit(True, "Local Offline Computer Vision Engine is active and ready (zero configuration required).")
             return
         client = GeminiVisionClient(model_name=self.model_name)
-        is_ok, msg = client.test_connection(self.model_name)
+        is_ok, msg = client.test_connection(self.model_name, api_key=self.api_key)
         self.result_ready.emit(is_ok, msg)
 
 
@@ -99,7 +102,7 @@ class SettingsDialog(QDialog):
         self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_key_input.setPlaceholderText("Enter your Gemini API key (AIzaSy...)")
         self.api_key_input.setText(get_gemini_api_key())
-        
+
         self.show_key_cb = QCheckBox("Show")
         self.show_key_cb.stateChanged.connect(self._toggle_show_key)
 
@@ -107,7 +110,7 @@ class SettingsDialog(QDialog):
         key_input_row.addWidget(self.show_key_cb)
         api_layout.addLayout(key_input_row)
 
-        note_lbl = QLabel("Key is stored securely in your local environment / .env file.")
+        note_lbl = QLabel("Key is saved as plain text in the local .env file. Keep that file private.")
         note_lbl.setStyleSheet("font-size: 11px; color: #64748B;")
         api_layout.addWidget(note_lbl)
 
@@ -115,7 +118,7 @@ class SettingsDialog(QDialog):
         test_row = QHBoxLayout()
         self.test_btn = QPushButton("Test Gemini Connection")
         self.test_btn.clicked.connect(self._run_connection_test)
-        
+
         self.status_badge = QLabel("● Status Unknown")
         self.status_badge.setStyleSheet("color: #64748B; font-weight: 600; font-size: 12px;")
 
@@ -150,7 +153,7 @@ class SettingsDialog(QDialog):
         btn_box = QHBoxLayout()
         btn_box.addStretch()
 
-        self.save_btn = QPushButton("Save & Apply")
+        self.save_btn = QPushButton("Save && Apply")
         self.save_btn.setStyleSheet("background-color: #2563EB; color: white; font-weight: 600; padding: 8px 20px;")
         self.save_btn.clicked.connect(self._on_save_applied)
 
@@ -168,10 +171,8 @@ class SettingsDialog(QDialog):
             self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
 
     def _run_connection_test(self):
-        # Temporarily set env var if changed in UI
+        # Test the key as typed, even if it has not been saved yet
         new_key = self.api_key_input.text().strip()
-        if new_key:
-            os.environ["GEMINI_API_KEY"] = new_key
 
         selected_model = self.model_combo.currentText().strip()
         self.test_btn.setEnabled(False)
@@ -179,7 +180,7 @@ class SettingsDialog(QDialog):
         self.status_badge.setStyleSheet("color: #2563EB; font-weight: 600;")
         self.test_result_lbl.setText("Sending validation request to Gemini API...")
 
-        self._test_worker = ConnectionTestWorker(selected_model)
+        self._test_worker = ConnectionTestWorker(selected_model, api_key=new_key)
         self._test_worker.result_ready.connect(self._on_test_finished)
         self._test_worker.start()
 
@@ -203,14 +204,18 @@ class SettingsDialog(QDialog):
         os.environ["GEMINI_API_KEY"] = new_key
         os.environ["GEMINI_MODEL"] = selected_model
 
-        # Update .env file
+        # Update only these two keys so any other entries in .env are preserved
         try:
-            with open(ENV_FILE, "w", encoding="utf-8") as f:
-                f.write(f"GEMINI_API_KEY={new_key}\n")
-                f.write(f"GEMINI_MODEL={selected_model}\n")
+            ENV_FILE.touch(exist_ok=True)
+            set_key(str(ENV_FILE), "GEMINI_API_KEY", new_key)
+            set_key(str(ENV_FILE), "GEMINI_MODEL", selected_model)
             log_session_step("SETTINGS", f"Saved configuration: Model={selected_model}, Key Updated={'Yes' if new_key else 'No'}")
         except Exception as e:
             app_logger.error(f"Failed to write to .env file: {e}")
+            QMessageBox.warning(
+                self, "Settings Not Saved to Disk",
+                f"The settings apply to this session, but could not be written to .env:\n{e}"
+            )
 
         self.settings_saved.emit(selected_model)
         self.accept()

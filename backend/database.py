@@ -6,12 +6,17 @@ camera calibration parameters, machine settings, and persistent inspection audit
 
 import os
 import sqlite3
-from typing import Dict, List, Any, Optional
+from contextlib import contextmanager
+from typing import Dict, List, Any, Optional, Iterator
 from datetime import datetime
 from backend.config import BASE_DIR
 from backend.logger import app_logger, log_session_step
 
-DB_PATH = BASE_DIR / "fastener_inspection.db"
+# FASTENER_DB_PATH lets tests run against a throwaway database instead of production data
+DB_PATH = os.getenv("FASTENER_DB_PATH") or (BASE_DIR / "fastener_inspection.db")
+
+# Size labels that mean "this bin is not tied to one specific size"
+GENERIC_SIZE_LABELS = ("Any Size", "Out of Spec", "Custom", "Configurable")
 
 class FastenerDatabase:
     """Thread-safe SQLite database manager for the inspection system."""
@@ -20,10 +25,19 @@ class FastenerDatabase:
         self.db_path = db_path
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
+    @contextmanager
+    def _get_connection(self) -> Iterator[sqlite3.Connection]:
+        """Yields a connection that is committed on success and always closed afterwards."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def _init_db(self):
         """Creates tables and populates default ISO metric standards and 10 sorting trays."""
@@ -310,13 +324,29 @@ class FastenerDatabase:
                 cursor.execute("SELECT * FROM trays ORDER BY tray_id ASC")
             return [dict(row) for row in cursor.fetchall()]
 
-    def update_tray(self, tray_id: int, assigned_category: str, assigned_size: str, servo_angle: int, capacity: int, enabled: int = 1):
+    def get_reject_tray(self) -> Optional[Dict[str, Any]]:
+        """Returns the active reject bin (enabled bin assigned to REJECT), or None if none is configured."""
+        rejects = [t for t in self.get_trays(enabled_only=True) if t["assigned_category"] == "REJECT"]
+        return rejects[-1] if rejects else None
+
+    def update_tray(
+        self,
+        tray_id: int,
+        assigned_category: str,
+        assigned_size: str,
+        servo_angle: int,
+        capacity: int,
+        enabled: int = 1,
+        tray_name: Optional[str] = None
+    ):
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE trays SET assigned_category = ?, assigned_size = ?, servo_angle = ?, capacity = ?, enabled = ?
                 WHERE tray_id = ?
             """, (assigned_category, assigned_size, servo_angle, capacity, enabled, tray_id))
+            if tray_name:
+                cursor.execute("UPDATE trays SET tray_name = ? WHERE tray_id = ?", (tray_name, tray_id))
             conn.commit()
 
     def set_active_bin_count(self, count: int, start_angle: int = 20, end_angle: int = 160):
@@ -332,11 +362,8 @@ class FastenerDatabase:
             cursor.execute("UPDATE trays SET enabled = 0")
 
             # Calculate equal angular steps
-            if count == 1:
-                angles = [start_angle]
-            else:
-                step = (end_angle - start_angle) / (count - 1)
-                angles = [int(start_angle + i * step) for i in range(count)]
+            step = (end_angle - start_angle) / (count - 1)
+            angles = [int(round(start_angle + i * step)) for i in range(count)]
 
             default_presets = [
                 ("BOLT", "M8 x 40"),
@@ -353,29 +380,42 @@ class FastenerDatabase:
 
             for idx in range(1, count + 1):
                 angle = angles[idx - 1]
-                # Default preset assignment
-                if idx == count:
-                    preset_cat, preset_size = "REJECT", "Out of Spec"
-                    tray_name = f"Bin {idx} (Reject / Out of Spec)"
-                elif idx - 1 < len(default_presets):
+                # Default preset assignment (the reject preset is reserved for the last bin)
+                if idx - 1 < len(default_presets) - 1:
                     preset_cat, preset_size = default_presets[idx - 1]
-                    tray_name = f"Bin {idx} ({preset_size})"
                 else:
                     preset_cat, preset_size = "ANY", "Configurable"
-                    tray_name = f"Bin {idx} (Custom)"
 
-                # Check if exists
-                cursor.execute("SELECT tray_id FROM trays WHERE tray_id = ?", (idx,))
-                if cursor.fetchone():
+                cursor.execute("SELECT assigned_category, assigned_size FROM trays WHERE tray_id = ?", (idx,))
+                existing = cursor.fetchone()
+
+                if idx == count:
+                    # The last active bin is always the reject bin
+                    category, size = "REJECT", "Out of Spec"
+                elif existing and existing["assigned_category"] != "REJECT":
+                    # Keep the operator's existing assignment for this bin
+                    category, size = existing["assigned_category"], existing["assigned_size"]
+                else:
+                    category, size = preset_cat, preset_size
+
+                # The label always describes what the bin is actually assigned to
+                if category == "REJECT":
+                    tray_name = f"Bin {idx} (Reject / Out of Spec)"
+                elif size in GENERIC_SIZE_LABELS or not size:
+                    tray_name = f"Bin {idx} ({category.title()})"
+                else:
+                    tray_name = f"Bin {idx} ({size})"
+
+                if existing:
                     cursor.execute("""
-                        UPDATE trays SET tray_name = ?, servo_angle = ?, enabled = 1
+                        UPDATE trays SET tray_name = ?, assigned_category = ?, assigned_size = ?, servo_angle = ?, enabled = 1
                         WHERE tray_id = ?
-                    """, (tray_name, angle, idx))
+                    """, (tray_name, category, size, angle, idx))
                 else:
                     cursor.execute("""
                         INSERT INTO trays (tray_id, tray_name, assigned_category, assigned_size, servo_angle, capacity, current_count, enabled)
                         VALUES (?, ?, ?, ?, ?, 250, 0, 1)
-                    """, (idx, tray_name, preset_cat, preset_size, angle))
+                    """, (idx, tray_name, category, size, angle))
 
             conn.commit()
         log_session_step("CONFIG", f"Configured {count} active sorting bins with angles {angles}")
@@ -460,7 +500,11 @@ class FastenerDatabase:
     def set_setting(self, key: str, value: str):
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT OR REPLACE INTO machine_settings (key, value) VALUES (?, ?)", (key, str(value)))
+            # Upsert the value only, so the setting's description is preserved
+            cursor.execute("""
+                INSERT INTO machine_settings (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """, (key, str(value)))
             conn.commit()
 
 db_instance = FastenerDatabase()

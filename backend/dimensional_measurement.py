@@ -17,6 +17,65 @@ from backend.config import (
 from backend.database import db_instance
 from backend.logger import app_logger
 
+def axial_width_profile(contour: np.ndarray, rect) -> np.ndarray:
+    """
+    Returns the object's width (px) at every pixel step along its long axis.
+    Works at any rotation, so head, shank and tip can be measured separately.
+    """
+    x, y, bw, bh = cv2.boundingRect(contour)
+    mask = np.zeros((bh, bw), dtype=np.uint8)
+    cv2.drawContours(mask, [contour - np.array([x, y])], -1, 255, cv2.FILLED)
+    ys, xs = np.nonzero(mask)
+    if xs.size == 0:
+        return np.zeros(0, dtype=np.float64)
+
+    (cx, cy), _, _ = rect
+    box = cv2.boxPoints(rect)
+    edge_a, edge_b = box[1] - box[0], box[2] - box[1]
+    axis = edge_a if np.linalg.norm(edge_a) >= np.linalg.norm(edge_b) else edge_b
+    norm = float(np.linalg.norm(axis))
+    if norm < 1e-6:
+        return np.zeros(0, dtype=np.float64)
+    ax, ay = axis / norm
+
+    px = xs + x - cx
+    py = ys + y - cy
+    along = px * ax + py * ay
+    across = -px * ay + py * ax
+
+    bins = np.round(along - along.min()).astype(np.int64)
+    count = int(bins.max()) + 1
+    low = np.full(count, np.inf)
+    high = np.full(count, -np.inf)
+    np.minimum.at(low, bins, across)
+    np.maximum.at(high, bins, across)
+    return np.where(np.isfinite(low), high - low + 1.0, 0.0)
+
+
+def measure_head_and_shank(widths: np.ndarray) -> Dict[str, float]:
+    """
+    Splits an elongated fastener's width profile into head and shank.
+    Returns pixel values: total_len, shank_dia, head_width, head_len (0 if no distinct head).
+    """
+    total = len(widths)
+    if total < 10:
+        fallback = float(np.median(widths)) if total else 0.0
+        return {"total_len": float(total), "shank_dia": fallback, "head_width": fallback, "head_len": 0.0}
+
+    # The shank is the uniform middle section; the head sits at the wider end
+    shank = max(1.0, float(np.median(widths[int(total * 0.30):int(total * 0.70)])))
+    end = max(2, int(total * 0.08))
+    if float(np.mean(widths[-end:])) > float(np.mean(widths[:end])):
+        widths = widths[::-1]
+
+    head_zone = widths[:int(total * 0.45)]
+    wide = np.nonzero(head_zone > shank * 1.2)[0]
+    head_len = int(wide[-1]) + 1 if wide.size >= 2 else 0
+    head_width = float(np.percentile(widths[:head_len], 90)) if head_len else shank
+
+    return {"total_len": float(total), "shank_dia": shank, "head_width": head_width, "head_len": float(head_len)}
+
+
 class FastenerDimensionEngine:
     """Computes physical dimensions (mm) from high-resolution OpenCV frames."""
 
@@ -44,7 +103,7 @@ class FastenerDimensionEngine:
             return {"success": False, "error": "Empty image provided."}
 
         h, w = cv_img.shape[:2]
-        
+
         # If specific ROI bounding box provided, crop or focus
         if roi_bbox is not None:
             rx, ry, rw, rh = roi_bbox
@@ -52,6 +111,9 @@ class FastenerDimensionEngine:
         else:
             rx, ry, rw, rh = 0, 0, w, h
             crop = cv_img
+
+        if crop.size == 0 or rw < 12 or rh < 12:
+            return {"success": False, "error": "Inspection region is too small to measure."}
 
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -119,25 +181,25 @@ class FastenerDimensionEngine:
         }
 
         if category == CATEGORY_BOLT:
-            # Bolt: Longitudinal extent = Total Length, Transverse stem width = Stem Diameter
-            total_length_mm = length_px * scale
-            
-            # Analyze head width vs stem width
-            # Rotated rectangle or contour profile
-            stem_dia_mm = width_px * scale
-            head_width_mm = stem_dia_mm * 1.55  # Standard ISO hex head ratio
-            
-            measurements["length_mm"] = round(total_length_mm, 2)
-            measurements["stem_dia_mm"] = round(stem_dia_mm, 2)
-            measurements["head_width_mm"] = round(head_width_mm, 2)
-            measurements["details"]["thread_length_est_mm"] = round(total_length_mm * 0.70, 2)
+            # Bolt: nominal length is measured under the head; diameter is the shank, not the head
+            profile = measure_head_and_shank(axial_width_profile(main_cnt, rect))
+            overall_mm = profile["total_len"] * scale
+            head_height_mm = profile["head_len"] * scale
+            length_mm = overall_mm - head_height_mm
+
+            measurements["length_mm"] = round(length_mm, 2)
+            measurements["stem_dia_mm"] = round(profile["shank_dia"] * scale, 2)
+            measurements["head_width_mm"] = round(profile["head_width"] * scale, 2)
+            measurements["details"]["overall_length_mm"] = round(overall_mm, 2)
+            measurements["details"]["head_height_mm"] = round(head_height_mm, 2)
+            measurements["details"]["thread_length_est_mm"] = round(length_mm * 0.70, 2)
 
         elif category == CATEGORY_NUT:
             # Nut: Inner-hole diameter & Across-flats outer width
             inner_dia_mm = inner_dia_px * scale
             outer_af_mm = width_px * scale
             outer_ac_mm = length_px * scale
-            
+
             measurements["inner_dia_mm"] = round(inner_dia_mm, 2)
             measurements["outer_dia_mm"] = round(outer_af_mm, 2)
             measurements["details"]["across_corners_mm"] = round(outer_ac_mm, 2)
@@ -147,20 +209,19 @@ class FastenerDimensionEngine:
             inner_dia_mm = inner_dia_px * scale
             outer_dia_mm = length_px * scale
             wall_thick_mm = max(0.5, (outer_dia_mm - inner_dia_mm) / 2.0)
-            
+
             measurements["inner_dia_mm"] = round(inner_dia_mm, 2)
             measurements["outer_dia_mm"] = round(outer_dia_mm, 2)
             measurements["details"]["rim_thickness_mm"] = round(wall_thick_mm, 2)
 
         elif category == CATEGORY_SCREW:
-            # Screw: Total length, head width, shank diameter
-            length_mm = length_px * scale
-            shank_dia_mm = width_px * scale
-            head_width_mm = shank_dia_mm * 1.8
-            
-            measurements["length_mm"] = round(length_mm, 2)
-            measurements["stem_dia_mm"] = round(shank_dia_mm, 2)
-            measurements["head_width_mm"] = round(head_width_mm, 2)
+            # Screw: overall length (countersunk convention), measured head width, shank diameter
+            profile = measure_head_and_shank(axial_width_profile(main_cnt, rect))
+
+            measurements["length_mm"] = round(profile["total_len"] * scale, 2)
+            measurements["stem_dia_mm"] = round(profile["shank_dia"] * scale, 2)
+            measurements["head_width_mm"] = round(profile["head_width"] * scale, 2)
+            measurements["details"]["head_height_mm"] = round(profile["head_len"] * scale, 2)
 
         else:
             measurements["length_mm"] = round(length_px * scale, 2)
@@ -252,45 +313,62 @@ class FastenerDimensionEngine:
             status_bgr = (30, 30, 220)
             status_text = "REJECT"
 
+        # Scale line weight and text with the image so the overlay stays readable on large photos
+        k = max(1.0, max(h, w) / 800.0)
+        thin = max(1, int(round(k)))
+        thick = max(2, int(round(2 * k)))
+        gap = int(10 * k)
+
         # 1. Bounding box & Corner Brackets
-        cv2.rectangle(annotated, (x, y), (x + bw, y + bh), status_bgr, 1, cv2.LINE_AA)
-        corner_len = min(20, bw // 4, bh // 4)
+        cv2.rectangle(annotated, (x, y), (x + bw, y + bh), status_bgr, thin, cv2.LINE_AA)
+        corner_len = min(int(20 * k), bw // 4, bh // 4)
         for cx_pt, cy_pt, dx, dy in [
             (x, y, 1, 1), (x + bw, y, -1, 1), (x, y + bh, 1, -1), (x + bw, y + bh, -1, -1)
         ]:
-            cv2.line(annotated, (cx_pt, cy_pt), (cx_pt + dx * corner_len, cy_pt), status_bgr, 2)
-            cv2.line(annotated, (cx_pt, cy_pt), (cx_pt, cy_pt + dy * corner_len), status_bgr, 2)
+            cv2.line(annotated, (cx_pt, cy_pt), (cx_pt + dx * corner_len, cy_pt), status_bgr, thick)
+            cv2.line(annotated, (cx_pt, cy_pt), (cx_pt, cy_pt + dy * corner_len), status_bgr, thick)
 
         # 2. Draw Dimension Lines (Arrows & MM Text)
         font = cv2.FONT_HERSHEY_SIMPLEX
-        
-        # Horizontal Dimension Line (Length / Outer Dia)
-        dim_y = max(15, y - 10)
-        cv2.arrowedLine(annotated, (x + 10, dim_y), (x, dim_y), (255, 255, 0), 1, tipLength=0.15)
-        cv2.arrowedLine(annotated, (x + bw - 10, dim_y), (x + bw, dim_y), (255, 255, 0), 1, tipLength=0.15)
-        cv2.line(annotated, (x, dim_y), (x + bw, dim_y), (255, 255, 0), 1)
+        font_scale = 0.45 * k
 
         len_val = measurements.get("length_mm") or measurements.get("outer_dia_mm", 0.0)
         len_label = f"L: {len_val:.1f}mm" if measurements.get("length_mm") else f"OD: {len_val:.1f}mm"
-        cv2.putText(annotated, len_label, (x + bw // 2 - 25, dim_y - 4), font, 0.45, (255, 255, 0), 1, cv2.LINE_AA)
-
-        # Vertical Dimension Line (Diameter / Stem Dia)
-        dim_x = min(w - 15, x + bw + 15)
-        cv2.arrowedLine(annotated, (dim_x, y + 10), (dim_x, y), (0, 255, 255), 1, tipLength=0.15)
-        cv2.arrowedLine(annotated, (dim_x, y + bh - 10), (dim_x, y + bh), (0, 255, 255), 1, tipLength=0.15)
-        cv2.line(annotated, (dim_x, y), (dim_x, y + bh), (0, 255, 255), 1)
-
         dia_val = measurements.get("stem_dia_mm") or measurements.get("inner_dia_mm", 0.0)
         dia_label = f"Dia: {dia_val:.1f}mm" if measurements.get("stem_dia_mm") else f"ID: {dia_val:.1f}mm"
-        cv2.putText(annotated, dia_label, (dim_x + 4, y + bh // 2), font, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
 
-        # 3. Header Badge: Category + Decision + Assigned Tray
-        tray_str = f" -> Tray {target_tray}" if target_tray else ""
+        # The length callout goes on whichever side of the box the fastener's long axis runs along
+        horiz_label, vert_label = (len_label, dia_label) if bw >= bh else (dia_label, len_label)
+
+        # Horizontal Dimension Line
+        dim_y = max(int(15 * k), y - gap)
+        cv2.arrowedLine(annotated, (x + gap, dim_y), (x, dim_y), (255, 255, 0), thin, tipLength=0.15)
+        cv2.arrowedLine(annotated, (x + bw - gap, dim_y), (x + bw, dim_y), (255, 255, 0), thin, tipLength=0.15)
+        cv2.line(annotated, (x, dim_y), (x + bw, dim_y), (255, 255, 0), thin)
+        (lw, _), _ = cv2.getTextSize(horiz_label, font, font_scale, thin)
+        cv2.putText(annotated, horiz_label, (x + bw // 2 - lw // 2, dim_y - int(4 * k)), font, font_scale, (255, 255, 0), thin, cv2.LINE_AA)
+
+        # Vertical Dimension Line
+        dim_x = min(w - int(15 * k), x + bw + int(15 * k))
+        cv2.arrowedLine(annotated, (dim_x, y + gap), (dim_x, y), (0, 255, 255), thin, tipLength=0.15)
+        cv2.arrowedLine(annotated, (dim_x, y + bh - gap), (dim_x, y + bh), (0, 255, 255), thin, tipLength=0.15)
+        cv2.line(annotated, (dim_x, y), (dim_x, y + bh), (0, 255, 255), thin)
+        (vw, _), _ = cv2.getTextSize(vert_label, font, font_scale, thin)
+        vert_x = dim_x + int(4 * k)
+        if vert_x + vw > w:
+            vert_x = max(0, dim_x - int(4 * k) - vw)
+        cv2.putText(annotated, vert_label, (vert_x, y + bh // 2), font, font_scale, (0, 255, 255), thin, cv2.LINE_AA)
+
+        # 3. Header Badge: Category + Decision + Assigned Bin
+        tray_str = f" -> Bin {target_tray}" if target_tray else ""
         header_text = f"{category} | {status_text}{tray_str}"
-        (tw, th), _ = cv2.getTextSize(header_text, font, 0.55, 2)
-        badge_y = max(th + 10, y - 24)
-        cv2.rectangle(annotated, (x, badge_y - th - 6), (x + tw + 14, badge_y + 4), status_bgr, -1)
-        cv2.putText(annotated, header_text, (x + 7, badge_y - 2), font, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
+        badge_scale = 0.55 * k
+        (tw, th), _ = cv2.getTextSize(header_text, font, badge_scale, thick)
+        pad_x, pad_y = int(7 * k), int(6 * k)
+        # Sits above the dimension callout so the two never overlap
+        badge_y = max(th + pad_y + int(4 * k), y - int(34 * k))
+        cv2.rectangle(annotated, (x, badge_y - th - pad_y), (x + tw + 2 * pad_x, badge_y + int(4 * k)), status_bgr, -1)
+        cv2.putText(annotated, header_text, (x + pad_x, badge_y - int(2 * k)), font, badge_scale, (255, 255, 255), thin, cv2.LINE_AA)
 
         return annotated
 

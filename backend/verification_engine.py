@@ -15,6 +15,11 @@ from backend.logger import app_logger, log_session_step
 class FastenerVerificationEngine:
     """Evaluates measured dimensions against tolerance database and assigns sorting actions."""
 
+    # Bin id reported when a part cannot be routed anywhere (no physical sort is performed)
+    NO_BIN = 0
+    # Key diameter off by more than this fraction of the nearest standard size = not a known fastener
+    GROSS_MISMATCH_RATIO = 0.5
+
     def verify_and_decide(
         self,
         category: str,
@@ -39,9 +44,7 @@ class FastenerVerificationEngine:
         if category == CATEGORY_UNKNOWN or not measurements.get("success", False):
             return self._create_reject_decision(
                 category="UNKNOWN",
-                reason="Object could not be recognized as a valid fastener category.",
-                tray_id=10,
-                servo_angle=180
+                reason="Object could not be recognized as a valid fastener category."
             )
 
         # Retrieve enabled specifications for this category
@@ -49,9 +52,7 @@ class FastenerVerificationEngine:
         if not specs:
             return self._create_reject_decision(
                 category=category,
-                reason=f"No specification standards configured for category '{category}'.",
-                tray_id=10,
-                servo_angle=180
+                reason=f"No specification standards configured for category '{category}'."
             )
 
         # Extract measured dimensions
@@ -85,10 +86,22 @@ class FastenerVerificationEngine:
         if not best_spec:
             return self._create_reject_decision(
                 category=category,
-                reason="No matching fastener standard could be found.",
-                tray_id=10,
-                servo_angle=180
+                reason="No matching fastener standard could be found."
             )
+
+        # A part whose key diameter is nowhere near any configured size is not a known fastener at all
+        nearest_dia = min(specs, key=lambda s: abs(target_dim - s["nominal_diameter"]))["nominal_diameter"]
+        if abs(target_dim - nearest_dia) > self.GROSS_MISMATCH_RATIO * nearest_dia:
+            dim_name = "shank diameter" if category in [CATEGORY_BOLT, CATEGORY_SCREW] else "hole diameter"
+            decision = self._create_reject_decision(
+                category=category,
+                reason=(
+                    f"Measured {dim_name} ({target_dim:.1f} mm) is far outside every configured "
+                    f"{category.lower()} size (nearest is {nearest_dia:g} mm). Not a recognized standard fastener."
+                )
+            )
+            decision["unrecognized"] = True
+            return decision
 
         # Validate against strict tolerance limits of the matched spec
         tolerance_errors = []
@@ -137,18 +150,21 @@ class FastenerVerificationEngine:
         matched_size_name = best_spec["size_name"]
 
         # Map to sorting tray
-        target_tray, target_angle = self._find_target_tray(category, matched_size_name, is_consistent)
+        target_tray, target_angle, has_bin = self._find_target_tray(category, matched_size_name, is_consistent)
 
         # Formulate final decision
         if is_consistent and confidence >= 0.70:
             decision = "ACCEPT"
-            reason = f"Verified {matched_size_name} within ISO dimensional tolerances. Routing to Tray {target_tray} (Chute Angle: {target_angle}°)."
+            if has_bin:
+                reason = f"Verified {matched_size_name} within ISO dimensional tolerances. Routing to Bin {target_tray} (Chute Angle: {target_angle}°)."
+            else:
+                reason = f"Verified {matched_size_name} within ISO dimensional tolerances, but no bin is assigned to it. {self._describe_reject_route(target_tray)}"
         elif is_consistent and confidence < 0.70:
             decision = "REINSPECT"
             reason = f"Dimensions match {matched_size_name}, but visual confidence ({int(confidence*100)}%) is low. Reinspection recommended."
         else:
             decision = "REJECT"
-            reason = f"Dimensional Mismatch for {matched_size_name}: {'; '.join(tolerance_errors)}. Routing to Reject Tray {target_tray}."
+            reason = f"Dimensional Mismatch for {matched_size_name}: {'; '.join(tolerance_errors)}. {self._describe_reject_route(target_tray)}"
 
         log_session_step("DECISION", f"{decision}: {matched_size_name} -> Tray {target_tray} ({target_angle}°)")
 
@@ -163,38 +179,52 @@ class FastenerVerificationEngine:
             "tolerance_errors": tolerance_errors
         }
 
-    def _find_target_tray(self, category: str, size_name: str, is_consistent: bool) -> Tuple[int, int]:
-        """Finds configured tray and servo angle in the 10-tray mapping table."""
-        trays = db_instance.get_trays()
-        
-        # If not consistent, route to Tray 10 (Reject)
-        if not is_consistent:
-            for t in trays:
-                if t["assigned_category"] == "REJECT" or t["tray_id"] == 10:
-                    return t["tray_id"], t["servo_angle"]
-            return 10, 180
+    def _reject_route(self) -> Tuple[int, int]:
+        """Returns (bin id, servo angle) of the active reject bin, or (NO_BIN, 0) when none is configured."""
+        reject = db_instance.get_reject_tray()
+        if reject:
+            return reject["tray_id"], reject["servo_angle"]
+        return self.NO_BIN, 0
 
-        # Exact match on size name
+    def _describe_reject_route(self, tray_id: int) -> str:
+        if tray_id == self.NO_BIN:
+            return "No reject bin is configured, so the part was not sorted - assign a bin to REJECT on the Custom Bins tab."
+        return f"Routing to Reject Bin {tray_id}."
+
+    def _find_target_tray(self, category: str, size_name: str, is_consistent: bool) -> Tuple[int, int, bool]:
+        """Finds the active bin and servo angle for a part. The flag is False when it fell back to the reject bin."""
+        if not is_consistent:
+            return (*self._reject_route(), True)
+
+        trays = db_instance.get_trays(enabled_only=True)
+
+        # Exact match on size name within the category
         for t in trays:
-            if t["enabled"] and t["assigned_size"] == size_name:
-                return t["tray_id"], t["servo_angle"]
+            if t["assigned_category"] == category and t["assigned_size"] == size_name:
+                return t["tray_id"], t["servo_angle"], True
 
         # Category match
         for t in trays:
-            if t["enabled"] and t["assigned_category"] == category:
-                return t["tray_id"], t["servo_angle"]
+            if t["assigned_category"] == category:
+                return t["tray_id"], t["servo_angle"], True
 
-        # Default Tray 10 (Reject/Unassigned)
-        return 10, 180
+        # A catch-all bin takes anything that has no dedicated bin
+        for t in trays:
+            if t["assigned_category"] == "ANY":
+                return t["tray_id"], t["servo_angle"], True
 
-    def _create_reject_decision(self, category: str, reason: str, tray_id: int = 10, servo_angle: int = 180) -> Dict[str, Any]:
+        return (*self._reject_route(), False)
+
+    def _create_reject_decision(self, category: str, reason: str) -> Dict[str, Any]:
+        tray_id, servo_angle = self._reject_route()
+        full_reason = f"{reason} {self._describe_reject_route(tray_id)}"
         return {
             "decision": "REJECT",
             "matched_size": "Non-Standard / Reject",
             "nominal_spec": None,
             "assigned_tray": tray_id,
             "servo_angle": servo_angle,
-            "reason": reason,
+            "reason": full_reason,
             "inconsistency_detected": True,
             "tolerance_errors": [reason]
         }

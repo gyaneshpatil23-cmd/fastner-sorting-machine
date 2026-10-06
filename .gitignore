@@ -40,3 +40,6 @@ logs/
 # OS
 Thumbs.db
 Desktop.ini
+
+# Local runtime database
+fastener_inspection.db

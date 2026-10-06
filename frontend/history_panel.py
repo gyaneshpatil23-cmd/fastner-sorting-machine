@@ -50,7 +50,7 @@ class HistoryPanel(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "Time", "Category", "Matched Size", "Length (mm)", "Stem Dia (mm)", "Inner / Outer Dia", "Decision", "Assigned Tray"
+            "Time", "Category", "Matched Size", "Length (mm)", "Stem Dia (mm)", "Inner / Outer Dia", "Decision", "Assigned Bin"
         ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -114,7 +114,7 @@ class HistoryPanel(QWidget):
         dec_font.setBold(True)
         item_dec.setFont(dec_font)
 
-        item_tray = QTableWidgetItem(f"Tray {tray_id}")
+        item_tray = QTableWidgetItem(f"Bin {tray_id}" if tray_id else "Not sorted")
         item_tray.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.table.setItem(0, 0, item_time)
@@ -127,6 +127,16 @@ class HistoryPanel(QWidget):
         self.table.setItem(0, 7, item_tray)
 
     def _on_clear_clicked(self):
+        if self.table.rowCount() == 0:
+            return
+        confirm = QMessageBox.question(
+            self, "Clear History",
+            "Permanently delete all inspection records from the audit log?\n\nExport a CSV report first if you need to keep them.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
         self.table.setRowCount(0)
         self.clear_history_requested.emit()
 

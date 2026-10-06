@@ -193,9 +193,33 @@ class LocalFastenerClassifier:
                     has_inner_hole = True
 
             # ----------------------------------------------------
+            # Plausibility Gate: reject shapes that cannot be a single fastener on the pad
+            # ----------------------------------------------------
+            edge = 2
+            cut_off = bx <= edge or by <= edge or (bx + bw) >= (w - edge) or (by + bh) >= (h - edge)
+            fills_frame = bw >= 0.9 * w and bh >= 0.9 * h
+            implausible = None
+            if fills_frame:
+                implausible = "Object fills the entire frame, so no fastener outline can be isolated."
+            elif cut_off:
+                implausible = "Object is cut off by the edge of the frame. Place the whole fastener inside the inspection area."
+            elif aspect_ratio >= 1.45 and inner_hole_area > 0.12 * main_area:
+                implausible = "Elongated shape with large internal openings does not match a bolt or screw profile."
+
+            if implausible:
+                return {
+                    "success": True,
+                    "category": CATEGORY_UNKNOWN,
+                    "confidence": 0.30,
+                    "reason": f"Local Vision: {implausible}",
+                    "roi": roi_box,
+                    "engine": "Local Offline Computer Vision Engine"
+                }
+
+            # ----------------------------------------------------
             # Fastener Classification Logic
             # ----------------------------------------------------
-            
+
             # 1. Elongated Fasteners (SCREW or BOLT)
             if aspect_ratio >= 1.35 and not (has_inner_hole and aspect_ratio < 1.45):
                 # Principal axis alignment for rotation-invariant width profiling
@@ -289,11 +313,12 @@ class LocalFastenerClassifier:
 
         except Exception as e:
             app_logger.error(f"Local Classifier Exception: {e}")
+            # Never guess a category after a failure: an unknown part must not be sorted as a good one
             return {
-                "success": True,
-                "category": CATEGORY_BOLT if cv_img.shape[1] != cv_img.shape[0] else CATEGORY_NUT,
-                "confidence": 0.85,
-                "reason": f"Local Vision (Heuristic Fallback): Physical geometry detected. ({e})",
+                "success": False,
+                "category": CATEGORY_UNKNOWN,
+                "confidence": 0.0,
+                "reason": f"Local Vision: Image analysis failed ({e}).",
                 "roi": None,
-                "engine": "Local Vision Fallback"
+                "engine": "Local Offline Computer Vision Engine"
             }

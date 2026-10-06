@@ -32,7 +32,7 @@ class TraysConfigurationPanel(QWidget):
         layout.setSpacing(12)
 
         # ---------------- 1. Quick Bin Setup & Angle Spacing Generator ----------------
-        setup_group = QGroupBox("DYNAMIC SORTING BINS & SERVO ANGLE SETUP")
+        setup_group = QGroupBox("DYNAMIC SORTING BINS && SERVO ANGLE SETUP")
         setup_layout = QHBoxLayout(setup_group)
         setup_layout.setContentsMargins(12, 12, 12, 12)
         setup_layout.setSpacing(14)
@@ -59,7 +59,7 @@ class TraysConfigurationPanel(QWidget):
         self.end_angle_spin.setSuffix("°")
         setup_layout.addWidget(self.end_angle_spin)
 
-        self.apply_preset_btn = QPushButton("⚙ Auto-Configure Bins & Equal Spacing")
+        self.apply_preset_btn = QPushButton("⚙ Auto-Configure Bins && Equal Spacing")
         self.apply_preset_btn.setStyleSheet("background-color: #2563EB; color: white; font-weight: 700; padding: 6px 14px;")
         self.apply_preset_btn.clicked.connect(self._on_auto_configure_clicked)
         setup_layout.addWidget(self.apply_preset_btn)
@@ -124,6 +124,7 @@ class TraysConfigurationPanel(QWidget):
 
             # 0. Bin ID
             id_item = QTableWidgetItem(f"Bin {t['tray_id']}")
+            id_item.setData(Qt.ItemDataRole.UserRole, t["tray_id"])
             id_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             id_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
             id_font = id_item.font()
@@ -171,13 +172,8 @@ class TraysConfigurationPanel(QWidget):
 
             pbar = QProgressBar()
             pbar.setRange(0, 100)
-            pbar.setValue(pct)
-            pbar.setFormat(f"{curr} / {cap} ({pct}%)")
             pbar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            if pct >= 90:
-                pbar.setStyleSheet("QProgressBar::chunk { background-color: #DC2626; }")
-            else:
-                pbar.setStyleSheet("QProgressBar::chunk { background-color: #059669; }")
+            self._set_fill_level(pbar, curr, cap)
 
             # 7. Test Chute Button
             test_btn = QPushButton(f"Aim Chute")
@@ -192,10 +188,37 @@ class TraysConfigurationPanel(QWidget):
             self.table.setCellWidget(row_idx, 6, pbar)
             self.table.setCellWidget(row_idx, 7, test_btn)
 
+    @staticmethod
+    def _set_fill_level(pbar: QProgressBar, current: int, capacity: int):
+        capacity = max(1, capacity)
+        pct = min(100, int((current / capacity) * 100))
+        pbar.setValue(pct)
+        pbar.setFormat(f"{current} / {capacity} ({pct}%)")
+        color = "#DC2626" if pct >= 90 else "#059669"
+        pbar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
+
+    def _row_tray_id(self, row: int) -> int:
+        item = self.table.item(row, 0)
+        tray_id = item.data(Qt.ItemDataRole.UserRole) if item else None
+        return int(tray_id) if tray_id is not None else row + 1
+
+    def refresh_fill_levels(self):
+        """Updates only the fill gauges, leaving any unsaved edits in the table untouched."""
+        trays = {t["tray_id"]: t for t in db_instance.get_trays()}
+        for row in range(self.table.rowCount()):
+            tray = trays.get(self._row_tray_id(row))
+            pbar = self.table.cellWidget(row, 6)
+            if tray and isinstance(pbar, QProgressBar):
+                self._set_fill_level(pbar, tray.get("current_count", 0), tray.get("capacity", 250))
+
     def _on_auto_configure_clicked(self):
         count = self.bin_count_spin.value()
         start_a = self.start_angle_spin.value()
         end_a = self.end_angle_spin.value()
+
+        if end_a <= start_a:
+            QMessageBox.warning(self, "Invalid Angle Span", "The end angle must be greater than the start angle.")
+            return
 
         db_instance.set_active_bin_count(count, start_angle=start_a, end_angle=end_a)
         self.load_trays()
@@ -210,7 +233,7 @@ class TraysConfigurationPanel(QWidget):
         """Saves current table edits back to SQLite database."""
         row_count = self.table.rowCount()
         for r in range(row_count):
-            tray_id = r + 1
+            tray_id = self._row_tray_id(r)
             name_item = self.table.item(r, 1)
             tray_name = name_item.text().strip() if name_item else f"Bin {tray_id}"
 
@@ -232,17 +255,34 @@ class TraysConfigurationPanel(QWidget):
                 assigned_size=size_name,
                 servo_angle=angle,
                 capacity=capacity,
-                enabled=1
+                enabled=1,
+                tray_name=tray_name
             )
 
         log_session_step("CONFIG", f"Saved customizations for {row_count} sorting bins.")
+        self.refresh_fill_levels()
         self.bins_configuration_changed.emit()
-        QMessageBox.information(self, "Settings Saved", f"All {row_count} bin assignments and servo angles have been saved!")
+
+        if db_instance.get_reject_tray() is None:
+            QMessageBox.warning(
+                self,
+                "No Reject Bin",
+                f"All {row_count} bins were saved, but none is assigned to REJECT.\n\n"
+                "Out-of-spec and unrecognized parts will not be sorted until one bin's category is set to REJECT."
+            )
+        else:
+            QMessageBox.information(self, "Settings Saved", f"All {row_count} bin assignments and servo angles have been saved!")
 
     def _test_chute_spin(self, tray_id: int, spin: QSpinBox):
         angle = spin.value()
-        hardware_manager.send_command({"command": "SORT", "tray": tray_id, "angle": angle})
-        QMessageBox.information(self, "Chute Actuated", f"Chute servo moved to Bin {tray_id} ({angle}°).")
+        if hardware_manager.send_command({"command": "SORT", "tray": tray_id, "angle": angle}):
+            QMessageBox.information(self, "Chute Actuated", f"Chute servo moved to Bin {tray_id} ({angle}°).")
+        else:
+            QMessageBox.warning(
+                self,
+                "Chute Not Moved",
+                "The command was not sent. Check that the emergency stop is reset and the hardware link is connected."
+            )
 
     def _reset_counts(self):
         db_instance.reset_tray_counts()

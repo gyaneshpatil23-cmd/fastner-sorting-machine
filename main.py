@@ -37,7 +37,7 @@ def main():
 
     # Instantiate and display main window
     window = MainWindow()
-    window.show()
+    window.show_fitted()
 
     log_session_step("MAIN", "Desktop application GUI loop started.")
     sys.exit(app.exec())

@@ -24,7 +24,7 @@ class AddSpecificationDialog(QDialog):
         super().__init__(parent)
         self.default_category = default_category
         self.setWindowTitle("Add New Fastener Size Specification")
-        self.setFixedWidth(460)
+        self.setMinimumWidth(620)
         self.init_ui()
 
     def init_ui(self):
@@ -147,6 +147,17 @@ class AddSpecificationDialog(QDialog):
         min_l = self.min_len_spin.value() if cat in ["BOLT", "SCREW", "CUSTOM"] else None
         max_l = self.max_len_spin.value() if cat in ["BOLT", "SCREW", "CUSTOM"] else None
 
+        # A tolerance band that does not contain its nominal value would reject every part
+        if not (min_d <= nom_d <= max_d):
+            QMessageBox.warning(self, "Input Error", "Diameter limits must satisfy Min ≤ Nominal ≤ Max.")
+            return
+        if nom_l is not None and not (min_l <= nom_l <= max_l):
+            QMessageBox.warning(self, "Input Error", "Length limits must satisfy Min ≤ Nominal ≤ Max.")
+            return
+        if any(s["size_name"].lower() == name.lower() for s in db_instance.get_specifications(cat)):
+            QMessageBox.warning(self, "Input Error", f"A {cat} size named '{name}' already exists.")
+            return
+
         inner_d = nom_d if cat in ["NUT", "WASHER"] else None
         min_in = min_d if cat in ["NUT", "WASHER"] else None
         max_in = max_d if cat in ["NUT", "WASHER"] else None
@@ -218,10 +229,10 @@ class SpecificationPanel(QWidget):
         """)
 
         categories = [
-            ("BOLT", "🔩 Bolts & Hex Cap Screws"),
+            ("BOLT", "🔩 Bolts && Hex Cap Screws"),
             ("NUT", "🥜 Nuts (Hex / Flange / Square)"),
-            ("WASHER", "⭕ Flat & Spring Washers"),
-            ("SCREW", "🪛 Screws & Machine Fasteners"),
+            ("WASHER", "⭕ Flat && Spring Washers"),
+            ("SCREW", "🪛 Screws && Machine Fasteners"),
             ("ALL", "📋 Master View (All Standards)")
         ]
 
@@ -244,6 +255,8 @@ class SpecificationPanel(QWidget):
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(True)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        # Read-only view: edits typed into cells were never saved to the database
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         return table
 
     def load_all_categories(self):

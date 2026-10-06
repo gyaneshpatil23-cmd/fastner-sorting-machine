@@ -65,7 +65,7 @@ Launch the application in PowerShell:
 python main.py
 ```
 
-Run the automated test suite:
+Run the automated test suite (it uses a temporary database, so your specs, bins and counters are not touched):
 ```powershell
 python test_app.py
 ```

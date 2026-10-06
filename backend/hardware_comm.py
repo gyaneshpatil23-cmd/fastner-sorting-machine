@@ -8,7 +8,7 @@ import time
 import json
 import socket
 import threading
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from PySide6.QtCore import QObject, Signal, QThread
 
 from backend.database import db_instance
@@ -23,6 +23,9 @@ except ImportError:
 
 class HardwareCommunicationManager(QObject):
     """Manages ESP32 communication, telemetry streams, and hardware execution."""
+    # Commands that may still be sent while the emergency stop is latched
+    ESTOP_ALLOWED_COMMANDS = ("ESTOP", "RESET_ESTOP", "STATUS", "PING")
+
     telemetry_updated = Signal(dict)
     command_ack = Signal(str, dict)
     cycle_progress = Signal(str, int)  # (step_name, percent 0-100)
@@ -42,6 +45,8 @@ class HardwareCommunicationManager(QObject):
         self._is_simulating = (self.mode == "SIMULATOR")
         self._is_estopped = False
         self._lock = threading.Lock()
+        # Only one physical sorting cycle may drive the mechanism at a time
+        self._cycle_lock = threading.Lock()
 
         # Telemetry State
         self.telemetry = {
@@ -63,6 +68,11 @@ class HardwareCommunicationManager(QObject):
             "last_ack": "OK"
         }
 
+    @property
+    def is_estopped(self) -> bool:
+        """True while the emergency stop is latched."""
+        return self._is_estopped
+
     def emergency_stop(self):
         """
         IMMEDIATE HARDWARE & SOFTWARE KILL SWITCH (E-STOP).
@@ -72,7 +82,7 @@ class HardwareCommunicationManager(QObject):
         self.telemetry["state"] = "EMERGENCY_STOP"
         self.telemetry["conveyor"] = False
         self.telemetry["estop"] = True
-        
+
         # Dispatch instant halt command to ESP32
         self.send_command({"command": "ESTOP", "action": "HALT_ALL"})
         self.emergency_stop_triggered.emit(True)
@@ -163,12 +173,22 @@ class HardwareCommunicationManager(QObject):
     def send_command(self, cmd_dict: Dict[str, Any]) -> bool:
         """Sends structured JSON command to ESP32 (or simulation engine)."""
         msg_str = json.dumps(cmd_dict)
+
+        # While E-STOP is latched, only the stop/recovery/status commands may reach the machine
+        if self._is_estopped and cmd_dict.get("command") not in self.ESTOP_ALLOWED_COMMANDS:
+            app_logger.warning(f"Hardware command blocked by E-STOP: {msg_str}")
+            return False
+
         app_logger.info(f"Hardware Command -> {msg_str}")
         log_session_step("HARDWARE_CMD", msg_str)
 
-        if self._is_simulating or not self._is_connected:
+        if self._is_simulating:
             self._handle_simulated_command(cmd_dict)
             return True
+
+        if not self._is_connected:
+            app_logger.warning(f"Hardware command not sent, {self.mode} link is not connected: {msg_str}")
+            return False
 
         try:
             if self.mode == "USB_SERIAL" and self._serial_conn:
@@ -194,58 +214,87 @@ class HardwareCommunicationManager(QObject):
         Launches full automated inspection-to-bin physical sorting cycle in a background thread:
         Pad Tilt (MG996R) -> Conveyor Stepper Run -> Chute Positioning (MG996R) -> Part Released -> Reset.
         """
+        if self._is_estopped:
+            app_logger.warning("Sorting cycle not started: E-STOP is active.")
+            self.cycle_progress.emit("Sorting blocked - E-STOP active", 0)
+            return
+
         thread = threading.Thread(target=self._run_sorting_sequence, args=(tray_id, servo_angle), daemon=True)
         thread.start()
 
+    def _abort_cycle(self, message: str):
+        """Stops the running cycle without counting a part into any bin."""
+        app_logger.warning(f"Sorting cycle aborted: {message}")
+        self.telemetry["conveyor"] = False
+        if not self._is_estopped:
+            self.telemetry["state"] = "READY"
+        self.telemetry_updated.emit(self.telemetry.copy())
+        self.cycle_progress.emit(message, 0)
+
+    def _cycle_step(self, cmd_dict: Dict[str, Any], dwell_s: float) -> bool:
+        """Sends one cycle command and waits for the motion; False means the cycle must abort."""
+        if self._is_estopped or not self.send_command(cmd_dict):
+            return False
+        self.telemetry_updated.emit(self.telemetry.copy())
+        # Sleep in short slices so an E-STOP interrupts the cycle promptly
+        deadline = time.time() + dwell_s
+        while time.time() < deadline:
+            if self._is_estopped:
+                return False
+            time.sleep(0.05)
+        return True
+
     def _run_sorting_sequence(self, tray_id: int, servo_angle: int):
         """End-to-end hardware sequence with telemetry progress updates."""
-        try:
-            # 1. Start Cycle
-            self.cycle_progress.emit("Positioning Rotating Chute...", 20)
-            self.telemetry["state"] = "CHUTE_POSITION"
-            self.telemetry["chute_angle"] = servo_angle
-            self.telemetry["active_tray"] = tray_id
-            self.send_command({"command": "SORT", "tray": tray_id, "angle": servo_angle})
-            self.telemetry_updated.emit(self.telemetry.copy())
-            time.sleep(0.4)
+        with self._cycle_lock:
+            try:
+                def stop_reason() -> str:
+                    return "Sorting halted - E-STOP active" if self._is_estopped else "Sorting skipped - hardware link not connected"
 
-            # 2. Tilt Inspection Pad (MG996R)
-            self.cycle_progress.emit("Tilting Inspection Pad...", 45)
-            self.telemetry["state"] = "PAD_TILT"
-            self.telemetry["pad_angle"] = 45
-            self.send_command({"command": "TILT_PAD", "angle": 45})
-            self.telemetry_updated.emit(self.telemetry.copy())
-            time.sleep(0.5)
+                # 1. Start Cycle
+                self.cycle_progress.emit("Positioning Rotating Chute...", 20)
+                self.telemetry["state"] = "CHUTE_POSITION"
+                self.telemetry["chute_angle"] = servo_angle
+                self.telemetry["active_tray"] = tray_id
+                if not self._cycle_step({"command": "SORT", "tray": tray_id, "angle": servo_angle}, 0.4):
+                    return self._abort_cycle(stop_reason())
 
-            # 3. Conveyor Stepper Running (NEMA 17)
-            self.cycle_progress.emit("Conveyor Transferring Part...", 75)
-            self.telemetry["state"] = "CONVEY"
-            self.telemetry["conveyor"] = True
-            self.telemetry["ir_sensor_pad"] = False
-            self.telemetry["ir_sensor_chute"] = True
-            self.send_command({"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200})
-            self.telemetry_updated.emit(self.telemetry.copy())
-            time.sleep(0.8)
+                # 2. Tilt Inspection Pad (MG996R)
+                self.cycle_progress.emit("Tilting Inspection Pad...", 45)
+                self.telemetry["state"] = "PAD_TILT"
+                self.telemetry["pad_angle"] = 45
+                if not self._cycle_step({"command": "TILT_PAD", "angle": 45}, 0.5):
+                    return self._abort_cycle(stop_reason())
 
-            # 4. Release into Bin & Increment Count
-            self.cycle_progress.emit(f"Part Released into Tray {tray_id}!", 100)
-            self.telemetry["state"] = "RELEASE"
-            self.telemetry["conveyor"] = False
-            self.telemetry["ir_sensor_chute"] = False
-            db_instance.increment_tray_count(tray_id)
-            time.sleep(0.4)
+                # 3. Conveyor Stepper Running (NEMA 17)
+                self.cycle_progress.emit("Conveyor Transferring Part...", 75)
+                self.telemetry["state"] = "CONVEY"
+                self.telemetry["conveyor"] = True
+                self.telemetry["ir_sensor_pad"] = False
+                self.telemetry["ir_sensor_chute"] = True
+                if not self._cycle_step({"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}, 0.8):
+                    return self._abort_cycle(stop_reason())
 
-            # 5. Reset to Ready State
-            self.telemetry["state"] = "READY"
-            self.telemetry["pad_angle"] = 0
-            self.send_command({"command": "RESET"})
-            self.telemetry_updated.emit(self.telemetry.copy())
-            self.cycle_progress.emit("Inspection Pad & Chute Ready", 0)
+                # 4. Release into Bin & Increment Count
+                self.cycle_progress.emit(f"Part Released into Tray {tray_id}!", 100)
+                self.telemetry["state"] = "RELEASE"
+                self.telemetry["conveyor"] = False
+                self.telemetry["ir_sensor_chute"] = False
+                db_instance.increment_tray_count(tray_id)
+                time.sleep(0.4)
+                if self._is_estopped:
+                    return self._abort_cycle(stop_reason())
 
-        except Exception as e:
-            app_logger.error(f"Sorting Sequence Error: {e}")
-            self.telemetry["state"] = "READY"
-            self.telemetry_updated.emit(self.telemetry.copy())
+                # 5. Reset to Ready State
+                self.telemetry["state"] = "READY"
+                self.telemetry["pad_angle"] = 0
+                self.send_command({"command": "RESET"})
+                self.telemetry_updated.emit(self.telemetry.copy())
+                self.cycle_progress.emit("Inspection Pad & Chute Ready", 0)
+
+            except Exception as e:
+                app_logger.error(f"Sorting Sequence Error: {e}")
+                self._abort_cycle("Sorting cycle failed - see application log")
 
     def _handle_simulated_command(self, cmd: Dict[str, Any]):
         """Processes simulated hardware commands with state feedback."""

@@ -11,16 +11,16 @@ import cv2
 import numpy as np
 
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QPixmap, QIcon, QAction
+from PySide6.QtGui import QPixmap, QIcon, QAction, QGuiApplication
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QSplitter, QFileDialog, QMessageBox,
     QStatusBar, QComboBox, QMenu, QToolButton, QTabWidget,
-    QCheckBox
+    QCheckBox, QScrollArea, QSizePolicy
 )
 
 from backend.config import (
-    APP_TITLE, APP_SUBTITLE, APP_VERSION, DEFAULT_MODEL,
+    CATEGORY_UNKNOWN, APP_TITLE, APP_SUBTITLE, APP_VERSION, DEFAULT_MODEL,
     SAMPLE_IMAGES_DIR, SUPPORTED_IMAGE_EXTENSIONS, get_gemini_api_key,
     MODEL_LOCAL_OFFLINE
 )
@@ -28,6 +28,8 @@ from backend.logger import app_logger, log_session_step
 from backend.camera import CameraThread, scan_available_cameras, get_preferred_camera_index
 from backend.classifier import FastenerClassifierManager
 from backend.dimensional_measurement import dimension_engine
+from backend.local_classifier import LocalFastenerClassifier
+from backend.verification_engine import verification_engine
 from backend.hardware_comm import hardware_manager
 from backend.database import db_instance
 from backend.image_utils import load_image, cv_to_qpixmap, generate_sample_dataset
@@ -42,14 +44,19 @@ from frontend.settings_dialog import SettingsDialog
 from frontend.styles import MAIN_STYLESHEET
 
 
+# "&&" renders as a literal "&" on buttons (a single "&" would be read as a shortcut marker)
+ANALYZE_BTN_TEXT = "🔬  INSPECT, MEASURE && SORT FASTENER"
+
+# Window size used on displays large enough to hold it; smaller displays get a maximized window
+PREFERRED_WINDOW_SIZE = QSize(1280, 880)
+
 class MainWindow(QMainWindow):
     """Main industrial inspection desktop workstation window."""
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"{APP_TITLE} - {APP_VERSION}")
-        self.setMinimumSize(1200, 840)
-        self.resize(1280, 880)
+        self._fit_to_screen()
 
         # State
         self.current_model = MODEL_LOCAL_OFFLINE
@@ -64,6 +71,7 @@ class MainWindow(QMainWindow):
         self.classifier_manager = FastenerClassifierManager(self)
         self.classifier_manager.inspection_completed.connect(self._on_inspection_completed)
         self.classifier_manager.counters_updated.connect(self._on_counters_updated)
+        hardware_manager.cycle_progress.connect(self._on_sort_cycle_progress)
 
         self.camera_thread: Optional[CameraThread] = None
 
@@ -77,6 +85,56 @@ class MainWindow(QMainWindow):
 
         log_session_step("STARTUP", "Industrial Fastener Inspection Workstation initialized.")
 
+    def _fit_to_screen(self):
+        """Sizes the window from the display's usable area (excluding the taskbar)."""
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        if screen is None:
+            self.resize(PREFERRED_WINDOW_SIZE)
+            return
+        avail = screen.availableGeometry()
+        self.setMinimumSize(min(800, avail.width()), min(520, avail.height()))
+
+        # Leave room for the title bar and window borders
+        width = min(PREFERRED_WINDOW_SIZE.width(), int(avail.width() * 0.94))
+        height = min(PREFERRED_WINDOW_SIZE.height(), int(avail.height() * 0.90))
+        self.resize(width, height)
+        self.move(
+            avail.x() + (avail.width() - width) // 2,
+            avail.y() + max(0, (avail.height() - height) // 3)
+        )
+
+    def show_fitted(self):
+        """Shows the window maximized when the display is too small for the preferred size."""
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        avail = screen.availableGeometry() if screen else None
+        if avail is not None and (
+            avail.width() < PREFERRED_WINDOW_SIZE.width() + 80
+            or avail.height() < PREFERRED_WINDOW_SIZE.height() + 80
+        ):
+            self.showMaximized()
+        else:
+            self.show()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Child styles are only final once the window is shown
+        self._lock_result_panel_width()
+
+    def _lock_result_panel_width(self):
+        """Keeps the result column wide enough for its readouts so it only scrolls vertically."""
+        content = self.result_scroll.widget()
+        scrollbar_width = self.result_scroll.verticalScrollBar().sizeHint().width()
+        self.result_scroll.setMinimumWidth(content.minimumSizeHint().width() + scrollbar_width + 4)
+
+    @staticmethod
+    def _make_scrollable(content: QWidget) -> QScrollArea:
+        """Wraps a panel so it scrolls instead of forcing the window past the screen edge."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(content)
+        return scroll
+
     def init_ui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -86,12 +144,13 @@ class MainWindow(QMainWindow):
 
         # ---------------- 1. Top Industrial Telemetry Header ----------------
         header_frame = QFrame()
+        header_frame.setObjectName("headerFrame")
         header_frame.setStyleSheet(
-            "background-color: #FFFFFF; border: 1px solid #CBD5E1; "
-            "border-radius: 6px; padding: 6px 12px;"
+            "#headerFrame { background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "#headerFrame QLabel { background: transparent; border: none; }"
         )
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setContentsMargins(14, 8, 14, 8)
         header_layout.setSpacing(12)
 
         # Title Block
@@ -101,6 +160,8 @@ class MainWindow(QMainWindow):
         title_lbl.setStyleSheet("font-size: 15px; font-weight: 800; color: #0F172A; letter-spacing: 0.5px;")
         subtitle_lbl = QLabel("Industrial Fastener Classification, Calibrated OpenCV Sizing & ESP32 Sorting")
         subtitle_lbl.setStyleSheet("font-size: 10px; color: #64748B; font-weight: 600;")
+        # Shown in full when there is room, but allowed to shrink on narrow displays
+        subtitle_lbl.setMinimumWidth(1)
         title_vbox.addWidget(title_lbl)
         title_vbox.addWidget(subtitle_lbl)
         header_layout.addLayout(title_vbox)
@@ -116,7 +177,8 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(self.bins_profile_lbl)
 
         # Camera Device Selector Dropdown
-        header_layout.addWidget(QLabel("Camera:"))
+        self.camera_caption_lbl = QLabel("Camera:")
+        header_layout.addWidget(self.camera_caption_lbl)
         self.camera_combo = QComboBox()
         self._populate_camera_devices()
         header_layout.addWidget(self.camera_combo)
@@ -146,11 +208,13 @@ class MainWindow(QMainWindow):
         # Emergency Warning Banner (Hidden by default)
         self.estop_banner = QFrame()
         self.estop_banner.setVisible(False)
+        self.estop_banner.setObjectName("estopBanner")
         self.estop_banner.setStyleSheet(
-            "background-color: #FEF2F2; border: 2px solid #DC2626; border-radius: 4px; padding: 6px 12px;"
+            "#estopBanner { background-color: #FEF2F2; border: 2px solid #DC2626; border-radius: 4px; }"
+            "#estopBanner QLabel { background: transparent; border: none; }"
         )
         eb_layout = QHBoxLayout(self.estop_banner)
-        eb_layout.setContentsMargins(0, 0, 0, 0)
+        eb_layout.setContentsMargins(12, 6, 12, 6)
         eb_lbl = QLabel("⚠️ EMERGENCY STOP ACTIVATED — All hardware motion halted. Clear obstructions before reset.")
         eb_lbl.setStyleSheet("color: #DC2626; font-weight: 800; font-size: 12px;")
         eb_layout.addWidget(eb_lbl)
@@ -171,24 +235,24 @@ class MainWindow(QMainWindow):
         # Tab 2: Customizable Sorting Bins & Chute Angles
         self.tab_trays = TraysConfigurationPanel()
         self.tab_trays.bins_configuration_changed.connect(self._update_bins_profile_header)
-        self.tabs.addTab(self.tab_trays, "📦 Custom Bins & Chute Angles")
+        self.tabs.addTab(self._make_scrollable(self.tab_trays), "📦 Custom Bins && Chute Angles")
 
         # Tab 3: Hardware & Motion Controller (ESP32)
         self.tab_hardware = HardwareControlPanel()
-        self.tabs.addTab(self.tab_hardware, "⚙ Hardware & Sorting Chute")
+        self.tabs.addTab(self._make_scrollable(self.tab_hardware), "⚙ Hardware && Sorting Chute")
 
         # Tab 4: Fastener Specifications Database
         self.tab_specs = SpecificationPanel()
-        self.tabs.addTab(self.tab_specs, "📐 ISO Specifications")
+        self.tabs.addTab(self._make_scrollable(self.tab_specs), "📐 ISO Specifications")
 
         # Tab 5: Camera Scale Calibration
         self.tab_calib = CameraCalibrationPanel()
-        self.tabs.addTab(self.tab_calib, "🎯 Camera Calibration")
+        self.tabs.addTab(self._make_scrollable(self.tab_calib), "🎯 Camera Calibration")
 
         # Tab 6: Inspection History Audit
         self.tab_history = HistoryPanel()
         self.tab_history.clear_history_requested.connect(self.classifier_manager.clear_history)
-        self.tabs.addTab(self.tab_history, "📋 Quality Audit History")
+        self.tabs.addTab(self._make_scrollable(self.tab_history), "📋 Quality Audit History")
 
         main_layout.addWidget(self.tabs, 1)
 
@@ -237,7 +301,7 @@ class MainWindow(QMainWindow):
         self.image_viewport = QLabel("NO IMAGE LOADED\n\nOpen an image file, load a fastener sample, or start camera capture.")
         self.image_viewport.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_viewport.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: 500;")
-        self.image_viewport.setMinimumSize(540, 420)
+        self.image_viewport.setMinimumSize(320, 200)
         vp_layout.addWidget(self.image_viewport)
         left_layout.addWidget(viewport_card, 1)
 
@@ -288,7 +352,7 @@ class MainWindow(QMainWindow):
         left_layout.addLayout(opt_bar)
 
         # Prominent Primary Action Button
-        self.analyze_btn = QPushButton("🔬  INSPECT, MEASURE & SORT FASTENER")
+        self.analyze_btn = QPushButton(ANALYZE_BTN_TEXT)
         self.analyze_btn.setObjectName("primaryActionBtn")
         self.analyze_btn.setMinimumHeight(42)
         self.analyze_btn.clicked.connect(self._analyze_current_image)
@@ -307,7 +371,8 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.result_panel)
         right_layout.addStretch()
 
-        splitter.addWidget(right_widget)
+        self.result_scroll = self._make_scrollable(right_widget)
+        splitter.addWidget(self.result_scroll)
 
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 2)
@@ -327,7 +392,9 @@ class MainWindow(QMainWindow):
     def _populate_camera_devices(self):
         self.camera_combo.clear()
         cams = scan_available_cameras()
-        preferred_idx = get_preferred_camera_index()
+        # Prefer the highest-numbered external camera, otherwise the built-in one
+        external = [c["index"] for c in cams if c.get("is_external")]
+        preferred_idx = external[-1] if external else 0
         select_idx = 0
 
         for i, c in enumerate(cams):
@@ -385,7 +452,9 @@ class MainWindow(QMainWindow):
         log_session_step("IMAGE", f"Loaded image file: {os.path.basename(filepath)}")
 
     def _start_camera(self):
-        if self.camera_thread and self.camera_thread.is_streaming():
+        if hardware_manager.is_estopped:
+            return
+        if self.camera_thread and self.camera_thread.isRunning():
             return
 
         cam_idx = self.camera_combo.currentData() or 0
@@ -416,7 +485,11 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, "Camera Warning", f"{err_msg}\n\nYou can still use 'Open File' or 'Load Sample'.")
 
     def _on_camera_frame(self, frame: np.ndarray):
+        if self.camera_thread is None:
+            # A frame that was already queued when the camera was stopped
+            return
         self.current_cv_image = frame
+        self.last_inspection_result = None
         self._display_cv_image(frame)
 
     def _capture_camera_frame(self):
@@ -425,13 +498,15 @@ class MainWindow(QMainWindow):
             self._stop_camera()
             if frame is not None:
                 self.current_cv_image = frame
+                self.last_inspection_result = None
                 self._display_cv_image(self.current_cv_image)
                 self.sys_status_lbl.setText("System: ● Frame captured")
 
     def _stop_camera(self):
-        if self.camera_thread and self.camera_thread.is_streaming():
+        # isRunning() also covers a thread that is still opening the device
+        if self.camera_thread and self.camera_thread.isRunning():
             self.camera_thread.stop()
-            self.camera_thread = None
+        self.camera_thread = None
 
     def _display_cv_image(self, cv_img: np.ndarray):
         if cv_img is None or cv_img.size == 0:
@@ -446,17 +521,26 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if self.current_cv_image is not None:
-            if self.last_inspection_result:
-                meas = self.last_inspection_result.get("measurements", {})
-                dec = self.last_inspection_result.get("decision", "ACCEPT")
-                tray = self.last_inspection_result.get("assigned_tray", 1)
-                annotated = dimension_engine.draw_calibrated_overlay(
-                    self.current_cv_image, meas, decision=dec, target_tray=tray
-                )
-                self._display_cv_image(annotated)
-            else:
-                self._display_cv_image(self.current_cv_image)
+        # Drop secondary header items on narrow displays so the title and E-STOP stay readable
+        self.camera_caption_lbl.setVisible(self.width() >= 1260)
+        self.bins_profile_lbl.setVisible(self.width() >= 1120)
+        if self.last_inspection_result:
+            self._show_inspection_overlay(self.last_inspection_result)
+        elif self.current_cv_image is not None:
+            self._display_cv_image(self.current_cv_image)
+
+    def _show_inspection_overlay(self, result: dict):
+        """Draws the measurement overlay on the exact frame that was inspected."""
+        inspected = result.get("raw_image")
+        if inspected is None:
+            inspected = self.current_cv_image
+        annotated = dimension_engine.draw_calibrated_overlay(
+            inspected,
+            result.get("measurements", {}),
+            decision=result.get("decision", "REJECT"),
+            target_tray=result.get("assigned_tray", 0)
+        )
+        self._display_cv_image(annotated)
 
     def _on_multi_mode_changed(self, state):
         self.multi_fastener_mode = (state == Qt.CheckState.Checked.value or state == 2)
@@ -467,12 +551,20 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "No Image", "Please load an image or start camera capture first.")
             return
 
+        if hardware_manager.is_estopped:
+            QMessageBox.warning(self, "E-STOP Active", "Reset the emergency stop before inspecting.")
+            return
+
+        # Inspecting from live video freezes the current frame, so the result stays on screen
+        if self.camera_thread and self.camera_thread.isRunning():
+            self._capture_camera_frame()
+
         if self.multi_fastener_mode:
             self._process_multi_fasteners()
             return
 
         self.analyze_btn.setEnabled(False)
-        self.analyze_btn.setText("⏳ INSPECTING & MEASURING...")
+        self.analyze_btn.setText("⏳ INSPECTING && MEASURING...")
         self.result_panel.set_analyzing_state()
         self.sys_status_lbl.setText("System: ● Measuring dimensions & verifying tolerances...")
 
@@ -484,49 +576,77 @@ class MainWindow(QMainWindow):
         )
         if worker:
             worker.error.connect(self._on_inspection_error)
+        else:
+            # A previous inspection is still running; don't leave the button stuck
+            self._restore_analyze_button()
+            self.sys_status_lbl.setText("System: ● Previous inspection still running")
+
+    def _restore_analyze_button(self):
+        self.analyze_btn.setText(ANALYZE_BTN_TEXT)
+        # Stay locked out while the emergency stop is latched
+        self.analyze_btn.setEnabled(not hardware_manager.is_estopped)
 
     def _process_multi_fasteners(self):
-        objects = dimension_engine.detect_multiple_fasteners(self.current_cv_image)
+        """Classifies, measures and verifies every object in view. Display only: nothing is logged or sorted."""
+        image = self.current_cv_image
+        objects = dimension_engine.detect_multiple_fasteners(image)
         if not objects:
             QMessageBox.information(self, "Multi Inspection", "No distinct fastener objects found in inspection area.")
             return
 
-        annotated = self.current_cv_image.copy()
-        for idx, obj in enumerate(objects):
-            meas = dimension_engine.measure_fastener(self.current_cv_image, "BOLT", roi_bbox=obj["roi_bbox"])
-            annotated = dimension_engine.draw_calibrated_overlay(annotated, meas, decision="ACCEPT", target_tray=(idx % 4) + 1)
+        classifier = LocalFastenerClassifier()
+        annotated = image.copy()
+        tally = {"ACCEPT": 0, "REINSPECT": 0, "REJECT": 0}
 
+        for obj in objects:
+            rx, ry, rw, rh = obj["roi_bbox"]
+            class_res = classifier.classify(image[ry:ry + rh, rx:rx + rw])
+            category = class_res.get("category", CATEGORY_UNKNOWN)
+            meas = dimension_engine.measure_fastener(image, category, roi_bbox=obj["roi_bbox"])
+            verif = verification_engine.verify_and_decide(category, float(class_res.get("confidence", 0.0)), meas)
+            if verif.get("unrecognized"):
+                meas["category"] = CATEGORY_UNKNOWN
+
+            decision = verif.get("decision", "REJECT")
+            tally[decision] = tally.get(decision, 0) + 1
+            if meas.get("success"):
+                annotated = dimension_engine.draw_calibrated_overlay(
+                    annotated, meas, decision=decision, target_tray=verif.get("assigned_tray", 0)
+                )
+
+        self.last_inspection_result = None
         self._display_cv_image(annotated)
-        self.sys_status_lbl.setText(f"System: ● Multi-inspection complete ({len(objects)} fasteners identified)")
+        self.sys_status_lbl.setText(f"System: ● Multi-inspection complete ({len(objects)} objects)")
         QMessageBox.information(
             self,
             "Multi-Fastener Inspection Complete",
-            f"Successfully segmented and measured {len(objects)} fasteners simultaneously on the inspection pad."
+            f"Inspected {len(objects)} objects in the inspection area:\n\n"
+            f"Accepted: {tally['ACCEPT']}\nReinspect: {tally['REINSPECT']}\nRejected: {tally['REJECT']}\n\n"
+            "Area scan is a preview: parts are not logged or physically sorted. "
+            "Inspect parts one at a time to sort them."
         )
 
     def _on_inspection_completed(self, result: dict):
-        self.analyze_btn.setEnabled(True)
-        self.analyze_btn.setText("🔬  INSPECT, MEASURE & SORT FASTENER")
-        self.sys_status_lbl.setText(f"System: ● Inspection Complete ({result.get('decision')})")
+        self._restore_analyze_button()
+        if not hardware_manager.is_estopped:
+            self.sys_status_lbl.setText(f"System: ● Inspection Complete ({result.get('decision')})")
 
         self.last_inspection_result = result
         self.result_panel.display_result(result)
+        self._lock_result_panel_width()
         self.tab_history.add_inspection_entry(result)
-        self.tab_trays.load_trays()
-
-        meas = result.get("measurements", {})
-        dec = result.get("decision", "ACCEPT")
-        tray = result.get("assigned_tray", 1)
-        annotated = dimension_engine.draw_calibrated_overlay(
-            self.current_cv_image, meas, decision=dec, target_tray=tray
-        )
-        self._display_cv_image(annotated)
+        self.tab_trays.refresh_fill_levels()
+        self._show_inspection_overlay(result)
 
     def _on_inspection_error(self, error_msg: str):
-        self.analyze_btn.setEnabled(True)
-        self.analyze_btn.setText("🔬  INSPECT, MEASURE & SORT FASTENER")
+        self._restore_analyze_button()
         self.sys_status_lbl.setText("System: ● Inspection Failed")
         QMessageBox.critical(self, "Inspection Error", f"Error:\n{error_msg}")
+
+    def _on_sort_cycle_progress(self, step_name: str, percent: int):
+        # The bin count only changes once the part has physically been released
+        if percent == 0:
+            self.tab_trays.refresh_fill_levels()
 
     def _on_counters_updated(self, counters: dict):
         self.result_panel.update_counters(counters)

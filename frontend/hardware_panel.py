@@ -44,7 +44,7 @@ class HardwareControlPanel(QWidget):
         link_layout.addWidget(QLabel("Communication Mode:"))
         self.mode_combo = QComboBox()
         self.mode_combo.addItems(["SIMULATOR (Virtual ESP32)", "USB_SERIAL (pyserial)", "WIFI (TCP Socket)"])
-        
+
         current_mode = db_instance.get_setting("comm_mode", "SIMULATOR")
         if current_mode == "USB_SERIAL":
             self.mode_combo.setCurrentIndex(1)
@@ -69,7 +69,7 @@ class HardwareControlPanel(QWidget):
         layout.addWidget(link_group)
 
         # ---------------- 2. Live Telemetry & System Status Grid ----------------
-        telem_group = QGroupBox("LIVE ESP32 TELEMETRY & SENSOR STATUS")
+        telem_group = QGroupBox("LIVE ESP32 TELEMETRY && SENSOR STATUS")
         telem_layout = QGridLayout(telem_group)
         telem_layout.setContentsMargins(12, 14, 12, 12)
         telem_layout.setHorizontalSpacing(14)
@@ -99,7 +99,7 @@ class HardwareControlPanel(QWidget):
         layout.addWidget(self.progress_group)
 
         # ---------------- 3. Manual Actuator Testing Controls ----------------
-        actuator_group = QGroupBox("MANUAL ACTUATOR & MECHANISM TEST CONTROLS")
+        actuator_group = QGroupBox("MANUAL ACTUATOR && MECHANISM TEST CONTROLS")
         act_layout = QGridLayout(actuator_group)
         act_layout.setContentsMargins(12, 14, 12, 12)
         act_layout.setHorizontalSpacing(12)

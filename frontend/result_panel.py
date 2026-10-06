@@ -31,9 +31,13 @@ class ResultPanel(QWidget):
 
         # ---------------- 1. Inspection Outcome Header Card ----------------
         self.header_card = QFrame()
-        self.header_card.setStyleSheet("background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px;")
+        self.header_card.setObjectName("resultHeaderCard")
+        self.header_card.setStyleSheet(
+            "#resultHeaderCard { background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; }"
+            "#resultHeaderCard QLabel { background: transparent; border: none; }"
+        )
         hdr_layout = QVBoxLayout(self.header_card)
-        hdr_layout.setContentsMargins(4, 4, 4, 4)
+        hdr_layout.setContentsMargins(14, 12, 14, 12)
         hdr_layout.setSpacing(6)
 
         # Top row: Category + Decision Badge
@@ -124,7 +128,7 @@ class ResultPanel(QWidget):
         layout.addWidget(self.reason_card)
 
         # ---------------- 5. Production Yield & Batch Stats ----------------
-        stats_group = QGroupBox("BATCH QUALITY & YIELD STATISTICS")
+        stats_group = QGroupBox("BATCH QUALITY && YIELD STATISTICS")
         stats_layout = QVBoxLayout(stats_group)
         stats_layout.setContentsMargins(8, 10, 8, 8)
         stats_layout.setSpacing(6)
@@ -173,9 +177,13 @@ class ResultPanel(QWidget):
 
     def _create_metric_tile(self, title: str, default_val: str):
         tile = QFrame()
-        tile.setStyleSheet("background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 4px; padding: 6px;")
+        tile.setObjectName("metricTile")
+        tile.setStyleSheet(
+            "#metricTile { background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 4px; }"
+            "#metricTile QLabel { background: transparent; border: none; }"
+        )
         t_layout = QVBoxLayout(tile)
-        t_layout.setContentsMargins(2, 2, 2, 2)
+        t_layout.setContentsMargins(10, 8, 10, 8)
         t_layout.setSpacing(2)
 
         title_lbl = QLabel(title)
@@ -209,7 +217,8 @@ class ResultPanel(QWidget):
             self.decision_badge.setText("REINSPECT (AMBIGUOUS)")
             self.decision_badge.setStyleSheet("background-color: #D97706; color: #FFFFFF; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 4px;")
         else:
-            self.decision_badge.setText("REJECTED (OUT OF SPEC)")
+            # An unrecognized object was never measured against a spec, so it is not "out of spec"
+            self.decision_badge.setText("NOT RECOGNIZED" if category == CATEGORY_UNKNOWN else "REJECTED (OUT OF SPEC)")
             self.decision_badge.setStyleSheet("background-color: #DC2626; color: #FFFFFF; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 4px;")
 
         self.size_label.setText(f"Standard: {detected_size}")
@@ -227,7 +236,12 @@ class ResultPanel(QWidget):
         self.val_inner_dia.setText(f"{inner_val:.2f} mm" if inner_val > 0 else "-- mm")
 
         # Sorting Destination & Gauge
-        self.tray_dest_lbl.setText(f"Destination: Bin {tray_id}")
+        if not tray_id:
+            self.tray_dest_lbl.setText("Destination: Not sorted (no reject bin)")
+        elif decision == "REINSPECT":
+            self.tray_dest_lbl.setText(f"Destination: Bin {tray_id} (held for reinspection)")
+        else:
+            self.tray_dest_lbl.setText(f"Destination: Bin {tray_id}")
         self.angle_dest_lbl.setText(f"Chute Angle: {angle}°")
         self.servo_gauge.setValue(angle)
 

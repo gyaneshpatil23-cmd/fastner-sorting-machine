@@ -93,7 +93,7 @@ class GeminiVisionClient:
 
             # Clean model name if needed
             model_id = target_model if not target_model.startswith("models/") else target_model.replace("models/", "")
-            
+
             # Setup generation configuration
             generation_config = {
                 "temperature": 0.1,
@@ -124,7 +124,7 @@ class GeminiVisionClient:
         except Exception as e:
             err_msg = str(e)
             app_logger.error(f"Gemini Classification Exception: {err_msg}")
-            
+
             # Formulate user-friendly error message
             friendly_reason = "AI analysis failed."
             if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg or "400" in err_msg and "key" in err_msg.lower():
@@ -170,7 +170,7 @@ class GeminiVisionClient:
 
         # Extract and normalize category
         raw_cat = str(data.get("category", "")).strip().upper()
-        
+
         # Match against allowed categories
         category = CATEGORY_UNKNOWN
         for allowed in ALLOWED_CATEGORIES:
@@ -202,12 +202,13 @@ class GeminiVisionClient:
             "reason": reason
         }
 
-    def test_connection(self, model_name: str = None) -> Tuple[bool, str]:
+    def test_connection(self, model_name: str = None, api_key: str = None) -> Tuple[bool, str]:
         """
         Tests API connectivity and authentication with Gemini.
+        Pass api_key to test a key that has not been saved yet.
         Returns (is_connected, status_message).
         """
-        api_key = get_gemini_api_key()
+        api_key = (api_key or "").strip() or get_gemini_api_key()
         if not api_key:
             return False, "GEMINI_API_KEY is not set. Please configure your API key."
 
@@ -215,10 +216,10 @@ class GeminiVisionClient:
         try:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            
+
             model_id = target_model if not target_model.startswith("models/") else target_model.replace("models/", "")
             model = genai.GenerativeModel(model_name=model_id)
-            
+
             # Simple minimal prompt to verify connection
             resp = model.generate_content("Respond with one word: 'CONNECTED'")
             if resp and resp.text:

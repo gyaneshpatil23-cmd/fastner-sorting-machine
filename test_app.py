@@ -5,11 +5,16 @@ Emergency Stop (E-STOP), Calibrated Measurement, and PySide6 Master Workstation.
 """
 
 import sys
+import tempfile
 import os
 import cv2
 import numpy as np
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer
+
+# Run against a throwaway database so tests never touch production specs, bins or counters.
+# This must be set before any backend module is imported.
+os.environ["FASTENER_DB_PATH"] = os.path.join(tempfile.mkdtemp(prefix="fastener_test_"), "test.db")
 
 from backend.config import BASE_DIR, SAMPLE_IMAGES_DIR, ALLOWED_CATEGORIES
 from backend.logger import app_logger, log_session_step
@@ -33,7 +38,7 @@ def run_tests():
     print("\n[1/7] Testing SQLite Database, Custom Sizes & Persistent Batch Counters...")
     specs = db_instance.get_specifications()
     assert len(specs) >= 15, f"Expected at least 15 ISO specifications, got {len(specs)}"
-    
+
     # Test adding a custom specification
     new_id = db_instance.add_specification("BOLT", "M8 x 45 Custom", 8.0, 7.78, 8.22, 45.0, 44.0, 46.0)
     assert new_id > 0, "Failed to insert custom specification"
@@ -50,6 +55,8 @@ def run_tests():
     hardware_manager.emergency_stop()
     assert hardware_manager._is_estopped, "E-Stop state not set"
     assert hardware_manager.telemetry["state"] == "EMERGENCY_STOP", "Telemetry state not EMERGENCY_STOP"
+    assert not hardware_manager.send_command({"command": "CONVEYOR", "action": "RUN"}), "Motion command accepted during E-Stop"
+    assert not hardware_manager.telemetry["conveyor"], "Conveyor started during E-Stop"
     hardware_manager.reset_estop()
     assert not hardware_manager._is_estopped, "E-Stop reset failed"
     assert hardware_manager.telemetry["state"] == "READY", "Telemetry state not READY after reset"
@@ -65,18 +72,40 @@ def run_tests():
     # 4. Test Local Classifier & Calibrated Dimensional Measurements
     print("\n[4/7] Testing Local Classifier & Calibrated OpenCV Measurement...")
     local_clf = LocalFastenerClassifier()
+    # The built-in samples are drawn to scale, so each must be accepted as its nominal size
+    expected_samples = {
+        "sample_01_hex_nut.png": ("NUT", "M8 Nut"),
+        "sample_02_hex_bolt.png": ("BOLT", "M8 x 40"),
+        "sample_03_wood_screw.png": ("SCREW", "M4 x 20 Screw"),
+        "sample_04_flat_washer.png": ("WASHER", "M8 Washer"),
+    }
     for filename in sample_files:
         filepath = os.path.join(SAMPLE_IMAGES_DIR, filename)
         img = load_image(filepath)
         assert img is not None, f"Failed loading {filename}"
-        
+
         class_res = local_clf.classify(img)
         category = class_res["category"]
         assert category in ALLOWED_CATEGORIES, f"Invalid category: {class_res}"
-        
-        meas = dimension_engine.measure_fastener(img, category)
-        assert meas["success"], f"Measurement failed for {filename}"
+
+        meas = dimension_engine.measure_fastener(img, category, roi_bbox=class_res.get("roi"))
         print(f"  -> {filename}: {category} | Length: {meas.get('length_mm', 0):.1f}mm, Stem Dia: {meas.get('stem_dia_mm', 0):.1f}mm, Inner Dia: {meas.get('inner_dia_mm', 0):.1f}mm")
+
+        if filename in expected_samples:
+            exp_category, exp_size = expected_samples[filename]
+            assert meas["success"], f"Measurement failed for {filename}"
+            verif = verification_engine.verify_and_decide(category, class_res["confidence"], meas)
+            assert category == exp_category, f"{filename}: expected {exp_category}, got {category}"
+            assert verif["decision"] == "ACCEPT" and verif["matched_size"] == exp_size, f"{filename}: {verif['reason']}"
+
+    # A shape that is not a fastener must never be accepted
+    blob = np.full((1300, 1000, 3), 235, dtype=np.uint8)
+    cv2.rectangle(blob, (240, 130), (760, 910), (40, 35, 30), -1)
+    blob_class = local_clf.classify(blob)
+    blob_meas = dimension_engine.measure_fastener(blob, blob_class["category"], roi_bbox=blob_class.get("roi"))
+    blob_verif = verification_engine.verify_and_decide(blob_class["category"], blob_class["confidence"], blob_meas)
+    assert blob_verif["decision"] == "REJECT", f"Non-fastener object was not rejected: {blob_verif}"
+    print("  -> Non-fastener object correctly rejected.")
 
     # 5. Test Tolerance Verification & Tray Mapping
     print("\n[5/7] Testing Specification Matching & Dynamic Bin Decision Engine...")

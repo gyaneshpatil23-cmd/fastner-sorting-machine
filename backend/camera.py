@@ -5,7 +5,7 @@ and automatic preference for external USB inspection cameras with fallback to in
 """
 
 import time
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 import cv2
 import numpy as np
 from PySide6.QtCore import QThread, Signal, QMutex, QMutexLocker
@@ -28,6 +28,7 @@ class CameraThread(QThread):
         # If no camera index passed, pick best camera (external preferred)
         self.camera_index = camera_index if camera_index is not None else get_preferred_camera_index()
         self._is_running = False
+        self._stop_requested = False
         self._mutex = QMutex()
         self._last_frame: Optional[np.ndarray] = None
         self._cap: Optional[cv2.VideoCapture] = None
@@ -65,9 +66,12 @@ class CameraThread(QThread):
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
         self._cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
 
-        self._is_running = True
-        self.camera_started.emit(self.camera_index)
-        app_logger.info(f"Camera #{self.camera_index} streaming active.")
+        with QMutexLocker(self._mutex):
+            # stop() may have been called while the device was still opening
+            self._is_running = not self._stop_requested
+        if self._is_running:
+            self.camera_started.emit(self.camera_index)
+            app_logger.info(f"Camera #{self.camera_index} streaming active.")
 
         target_interval = 1.0 / max(1, CAMERA_FPS)
 
@@ -99,6 +103,7 @@ class CameraThread(QThread):
     def stop(self):
         """Stops streaming and waits for thread termination."""
         with QMutexLocker(self._mutex):
+            self._stop_requested = True
             self._is_running = False
         self.wait(1500)
 
