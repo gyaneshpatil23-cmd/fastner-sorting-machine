@@ -1,0 +1,149 @@
+================================================================================
+           LIBRARIES, TOOLS & TECHNOLOGIES SPECIFICATION DOCUMENT
+================================================================================
+Project Title : AI-Powered Automated Fastener Inspection and Sorting System
+Domain        : Computer Vision, Industrial AI Automation & Embedded Systems
+Target System : Windows 10/11 / Linux (Ubuntu 22.04+)
+================================================================================
+
+--------------------------------------------------------------------------------
+1. THIRD-PARTY PYTHON LIBRARIES & PACKAGES
+--------------------------------------------------------------------------------
+
+1. PySide6 (Qt for Python)
+   • Version       : 6.11.2+ (Qt 6.x Framework)
+   • Key Modules   : PySide6.QtWidgets, PySide6.QtCore, PySide6.QtGui
+   • Exact Purpose :
+     - Complete Desktop Graphical User Interface (GUI) system.
+     - Multi-threaded video streaming with `QThread` (prevents camera lag from freezing the UI).
+     - Event-driven architecture using Qt `Signals` & `Slots`.
+     - Custom UI components: Live video viewport, real-time batch counters, audit history table, and settings dialog.
+     - Industrial UI styling via Qt Style Sheets (QSS).
+
+2. OpenCV (opencv-python)
+   • Version       : 4.10.0+ / 5.0.0+
+   • Key Module    : cv2
+   • Exact Purpose :
+     - Live hardware camera acquisition via `cv2.VideoCapture`.
+     - Image preprocessing: BGR to Grayscale conversion (`cv2.cvtColor`), Gaussian Blur (`cv2.GaussianBlur`), Otsu binarization (`cv2.threshold`), and Morphological filters (`cv2.morphologyEx`).
+     - Contour analysis: `cv2.findContours`, `cv2.contourArea`, `cv2.arcLength`, `cv2.minAreaRect`, `cv2.convexHull`.
+     - Visual overlays: Drawing real-time bounding boxes, confidence badges, and fastener center crosshairs (`cv2.rectangle`, `cv2.putText`, `cv2.line`, `cv2.circle`).
+
+3. NumPy (numpy)
+   • Version       : 1.26.0+ / 2.0+
+   • Key Module    : numpy (as np)
+   • Exact Purpose :
+     - High-performance matrix representations for multi-dimensional image arrays.
+     - Image slicing, array reshaping, coordinate transformations, and aspect ratio computations.
+     - Tip-to-head thickness profile calculations and statistical array analysis.
+
+4. Google Generative AI (google-generativeai & google-genai)
+   • Version       : 0.8.6+ / 2.22.0+
+   • Key Modules   : google.generativeai, google.genai
+   • Exact Purpose :
+     - Cloud Multimodal Vision AI model integration (`gemini-2.5-flash` / `gemini-1.5-flash`).
+     - Transmitting preprocessed fastener image payloads with strict prompt schemas.
+     - Enforcing structured JSON responses containing category labels, confidence percentages, and engineering explanations.
+
+5. Pillow (PIL - Python Imaging Library)
+   • Version       : 10.0.0+ / 11.0+
+   • Key Modules   : PIL.Image, PIL.ImageDraw, PIL.ImageFont
+   • Exact Purpose :
+     - Converting OpenCV BGR image arrays into PIL Image format for Gemini API serialization.
+     - Generating synthetic reference baseline images for offline testing (`sample_images/`).
+
+6. Python-Dotenv (python-dotenv)
+   • Version       : 1.0.0+
+   • Key Module    : dotenv.load_dotenv
+   • Exact Purpose :
+     - Securely loads environment variables and API keys from `.env` files into `os.environ` without hardcoding sensitive credentials in source files.
+
+
+--------------------------------------------------------------------------------
+2. PYTHON BUILT-IN STANDARD LIBRARIES
+--------------------------------------------------------------------------------
+
++----------------------+-------------------------------------------------------+
+| Module Name          | Primary Function & Project Role                       |
++----------------------+-------------------------------------------------------+
+| pathlib.Path         | Cross-platform directory & path resolution.           |
+| os / sys             | System environment variables, exit codes & OS handles.|
+| json                 | Serializing prompts & parsing Gemini structured JSON. |
+| csv                  | Formatting & writing inspection records to CSV files. |
+| time / datetime      | High-precision inference timing & audit timestamps.   |
+| logging & handlers   | Rotating log file generation with severity levels.    |
+| math                 | Trigonometric, circularity, and geometric Euclidean   |
+|                      | distance calculations.                                |
++----------------------+-------------------------------------------------------+
+
+
+--------------------------------------------------------------------------------
+3. DEVELOPMENT, VERSION CONTROL & ENVIRONMENT TOOLS
+--------------------------------------------------------------------------------
+
+1. Git & GitHub
+   • Version       : Git 2.55.0+ (Windows)
+   • Remote Repo   : https://github.com/manav-senpai/Fastener-Sorting.git
+   • Purpose       : Source code version control, branch management, collaboration.
+
+2. Windows PowerShell / Bash Terminal
+   • Purpose       : Script execution, environment setup, background task execution.
+
+3. Pip & Virtualenv
+   • Purpose       : Python package management and dependency isolation.
+
+4. VS Code / Antigravity IDE
+   • Purpose       : Code editing, debugging, linting, and workspace navigation.
+
+
+--------------------------------------------------------------------------------
+4. ARTIFICIAL INTELLIGENCE & CLOUD VISION SERVICES
+--------------------------------------------------------------------------------
+
+• Model Architecture  : Google Gemini Multimodal LLM (Gemini 2.5 Flash / 1.5 Flash)
+• Inference Mode      : Zero-shot visual question answering with structured JSON schema
+• Fallback Architecture: 100% Local Offline Computer Vision Geometry Classifier
+  (Aspect Ratio, Compactness, Solidity, Tip Ratio, Inner Hole Detection)
+• Cloud Latency       : ~850 ms (Cloud AI) vs < 5.2 ms (Local CV Engine)
+
+
+--------------------------------------------------------------------------------
+5. HARDWARE & EMBEDDED INTEGRATION TOOLS
+--------------------------------------------------------------------------------
+
+1. Optical Camera Sensor
+   • 1080p HD CMOS Sensor / USB 2.0 / 3.0 UVC Video Interface
+   • Frame Rate: 30 FPS continuous streaming
+
+2. Microcontroller Hardware Interface (Actuator / Diverter)
+   • Target Hardware : Arduino Uno / ESP32 / Raspberry Pi Pico
+   • Communication   : Serial UART (USB Virtual COM Port)
+   • Actuators       : Servo Motors (MG996R/SG90) or 12V Pneumatic Solenoid Valves
+   • Purpose         : Diverts inspected fasteners into classified bins (Nuts, Bolts, Screws, Washers).
+
+3. Lighting Setup
+   • 6500K Diffused Neutral-White LED Ring Light (eliminates shadows and glare).
+
+
+--------------------------------------------------------------------------------
+6. DEPENDENCY INSTALLATION COMMANDS
+--------------------------------------------------------------------------------
+
+To install all required libraries on any fresh system:
+
+```bash
+# Upgrade pip
+python -m pip install --upgrade pip
+
+# Install all project dependencies
+pip install PySide6 opencv-python numpy google-generativeai pillow python-dotenv
+```
+
+Or using the repository requirements file:
+```bash
+pip install -r requirements.txt
+```
+
+================================================================================
+                    END OF LIBRARIES & TOOLS SPECIFICATION
+================================================================================

@@ -11,13 +11,13 @@ from PySide6.QtWidgets import (
     QCheckBox
 )
 
-from config import (
+from backend.config import (
     AVAILABLE_MODELS, DEFAULT_MODEL, ENV_FILE,
     CONFIDENCE_HIGH_THRESHOLD, CONFIDENCE_MEDIUM_THRESHOLD,
     MODEL_LOCAL_OFFLINE, get_gemini_api_key
 )
-from gemini_client import GeminiVisionClient
-from logger import app_logger, log_session_step
+from backend.gemini_client import GeminiVisionClient
+from backend.logger import app_logger, log_session_step
 
 
 class ConnectionTestWorker(QThread):

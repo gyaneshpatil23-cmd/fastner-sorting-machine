@@ -1,7 +1,7 @@
 """
-Fastener Classifier Management module for AI Fastener Inspection System.
-Manages asynchronous classification tasks using QThread worker to keep the GUI responsive.
-Designed with modularity for future hardware (ESP32/conveyor/sorting chute) integration.
+Fastener Inspection Orchestrator module for AI Fastener Inspection System.
+Integrates classification, calibrated dimensional measurement, ISO tolerance verification,
+database logging, and automated sorting hardware dispatch.
 """
 
 from datetime import datetime
@@ -9,143 +9,175 @@ from typing import Dict, Any, Optional, List
 import numpy as np
 from PySide6.QtCore import QObject, QThread, Signal
 
-from config import (
-    CATEGORY_NUT,
-    CATEGORY_BOLT,
-    CATEGORY_SCREW,
-    CATEGORY_WASHER,
-    CATEGORY_UNKNOWN,
-    ALLOWED_CATEGORIES,
-    DEFAULT_MODEL,
-    MODEL_LOCAL_OFFLINE,
+from backend.config import (
+    CATEGORY_NUT, CATEGORY_BOLT, CATEGORY_SCREW, CATEGORY_WASHER,
+    CATEGORY_UNKNOWN, ALLOWED_CATEGORIES, DEFAULT_MODEL, MODEL_LOCAL_OFFLINE,
     get_gemini_api_key
 )
-from gemini_client import GeminiVisionClient
-from local_classifier import LocalFastenerClassifier
-from logger import app_logger, log_session_step
+from backend.gemini_client import GeminiVisionClient
+from backend.local_classifier import LocalFastenerClassifier
+from backend.dimensional_measurement import dimension_engine
+from backend.verification_engine import verification_engine
+from backend.hardware_comm import hardware_manager
+from backend.database import db_instance
+from backend.logger import app_logger, log_session_step
 
 
-class FastenerClassificationWorker(QThread):
+class FastenerInspectionWorker(QThread):
     """
-    Asynchronous QThread worker to perform vision inference
-    (either via Local Offline Vision Engine or Gemini API)
-    without blocking the PySide6 UI event loop.
+    Asynchronous QThread worker that runs the full inspection pipeline:
+    Visual Classification -> Physical Dimensioning -> Specification Verification -> Tray Mapping.
     """
     finished = Signal(dict)
     error = Signal(str)
 
-    def __init__(self, cv_img: np.ndarray, model_name: str = DEFAULT_MODEL, parent=None):
+    def __init__(
+        self,
+        cv_img: np.ndarray,
+        model_name: str = DEFAULT_MODEL,
+        auto_sort: bool = True,
+        parent=None
+    ):
         super().__init__(parent)
         self.cv_img = cv_img.copy() if cv_img is not None else None
         self.model_name = model_name
+        self.auto_sort = auto_sort
         self.gemini_client = GeminiVisionClient(model_name=self.model_name)
         self.local_classifier = LocalFastenerClassifier()
 
     def run(self):
-        """Worker thread execution method."""
         if self.cv_img is None or self.cv_img.size == 0:
-            err_msg = "Invalid or empty image frame provided for classification."
-            app_logger.error(err_msg)
-            self.error.emit(err_msg)
+            self.error.emit("Invalid or empty image frame provided for inspection.")
             return
 
         try:
+            # 1. Step 1: Category Classification
             api_key = get_gemini_api_key()
             is_local = (self.model_name == MODEL_LOCAL_OFFLINE) or (not api_key)
 
             if is_local:
-                app_logger.info("Executing classification via Local Offline Computer Vision Engine...")
-                result = self.local_classifier.classify(self.cv_img)
+                class_res = self.local_classifier.classify(self.cv_img)
             else:
-                app_logger.info(f"Starting fastener classification using Gemini model '{self.model_name}'...")
-                result = self.gemini_client.classify_image(self.cv_img, model_name=self.model_name)
-                
-                # If Gemini encountered missing key or network issue, fallback to local engine
-                if not result.get("success", False) and result.get("error") == "API_KEY_MISSING":
-                    app_logger.info("Falling back to Local Offline Vision Engine...")
-                    result = self.local_classifier.classify(self.cv_img)
-            
-            # Attach timestamp
-            result["timestamp"] = datetime.now().strftime("%H:%M:%S")
-            result["date"] = datetime.now().strftime("%Y-%m-%d")
-            
-            self.finished.emit(result)
+                class_res = self.gemini_client.classify_image(self.cv_img, model_name=self.model_name)
+                if not class_res.get("success", False) and class_res.get("error") == "API_KEY_MISSING":
+                    class_res = self.local_classifier.classify(self.cv_img)
+
+            category = class_res.get("category", CATEGORY_UNKNOWN)
+            confidence = float(class_res.get("confidence", 0.0))
+
+            # 2. Step 2: Calibrated Dimensional Measurement (OpenCV)
+            meas_res = dimension_engine.measure_fastener(self.cv_img, category)
+
+            # 3. Step 3: Specification & Tolerance Verification
+            verif_res = verification_engine.verify_and_decide(category, confidence, meas_res)
+
+            # Combine into unified inspection packet
+            inspection_packet: Dict[str, Any] = {
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "category": category,
+                "confidence": confidence,
+                "classification_reason": class_res.get("reason", ""),
+                "measurements": meas_res,
+                "length_mm": meas_res.get("length_mm", 0.0),
+                "stem_dia_mm": meas_res.get("stem_dia_mm", 0.0),
+                "head_width_mm": meas_res.get("head_width_mm", 0.0),
+                "inner_dia_mm": meas_res.get("inner_dia_mm", 0.0),
+                "outer_dia_mm": meas_res.get("outer_dia_mm", 0.0),
+                "decision": verif_res.get("decision", "REJECT"),
+                "detected_size": verif_res.get("matched_size", "Unknown"),
+                "assigned_tray": verif_res.get("assigned_tray", 10),
+                "servo_angle": verif_res.get("servo_angle", 180),
+                "reason": verif_res.get("reason", ""),
+                "inconsistency_detected": verif_res.get("inconsistency_detected", False),
+                "tolerance_errors": verif_res.get("tolerance_errors", []),
+                "nominal_spec": verif_res.get("nominal_spec"),
+                "raw_image": self.cv_img
+            }
+
+            # 4. Step 4: Persist in SQLite Database
+            db_instance.log_inspection(inspection_packet)
+
+            # 5. Step 5: Dispatch Hardware Sorting Cycle if enabled
+            if self.auto_sort and inspection_packet["decision"] != "REINSPECT":
+                hardware_manager.execute_sorting_cycle(
+                    tray_id=inspection_packet["assigned_tray"],
+                    servo_angle=inspection_packet["servo_angle"]
+                )
+
+            self.finished.emit(inspection_packet)
+
         except Exception as e:
-            app_logger.error(f"Worker exception: {e}, attempting local fallback...")
-            try:
-                fallback_res = self.local_classifier.classify(self.cv_img)
-                fallback_res["timestamp"] = datetime.now().strftime("%H:%M:%S")
-                fallback_res["date"] = datetime.now().strftime("%Y-%m-%d")
-                self.finished.emit(fallback_res)
-            except Exception as e2:
-                self.error.emit(f"Classification failed: {str(e2)}")
+            app_logger.error(f"Inspection pipeline failure: {e}")
+            self.error.emit(f"Inspection failed: {str(e)}")
 
 
 class FastenerClassifierManager(QObject):
-    """
-    High-level manager for fastener inspection operations.
-    Maintains statistics/counters and records inspection history in-memory.
-    """
+    """Coordinates inspections, batch statistics, and event subscriptions."""
     inspection_completed = Signal(dict)
     counters_updated = Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._current_worker: Optional[FastenerClassificationWorker] = None
+        self._current_worker: Optional[FastenerInspectionWorker] = None
         
-        # Category Counters
-        self.counters = {cat: 0 for cat in ALLOWED_CATEGORIES}
-        
-        # In-memory inspection history list of dicts
+        # Load persistent counters from SQLite database
+        saved_counters = db_instance.load_batch_counters()
+        self.counters = {cat: saved_counters.get(cat, 0) for cat in ALLOWED_CATEGORIES}
+        self.counters["ACCEPTED"] = saved_counters.get("ACCEPTED", 0)
+        self.counters["REJECTED"] = saved_counters.get("REJECTED", 0)
         self.history: List[Dict[str, Any]] = []
 
-    def start_classification(self, cv_img: np.ndarray, model_name: str = DEFAULT_MODEL) -> Optional[FastenerClassificationWorker]:
-        """Spawns an asynchronous worker thread for classification."""
+    def start_classification(
+        self,
+        cv_img: np.ndarray,
+        model_name: str = DEFAULT_MODEL,
+        auto_sort: bool = True
+    ) -> Optional[FastenerInspectionWorker]:
+        """Spawns asynchronous worker thread."""
         if self._current_worker and self._current_worker.isRunning():
-            app_logger.warning("Classification already in progress. Ignoring duplicate request.")
+            app_logger.warning("Inspection already in progress.")
             return None
 
-        self._current_worker = FastenerClassificationWorker(cv_img, model_name)
+        self._current_worker = FastenerInspectionWorker(cv_img, model_name, auto_sort, parent=self)
         self._current_worker.finished.connect(self._on_worker_finished)
         self._current_worker.error.connect(self._on_worker_error)
         self._current_worker.start()
         return self._current_worker
 
     def _on_worker_finished(self, result: Dict[str, Any]):
-        """Handles successful worker completion and updates counters/history."""
         category = result.get("category", CATEGORY_UNKNOWN)
-        confidence = result.get("confidence", 0.0)
+        decision = result.get("decision", "REJECT")
 
-        # Update counter
         if category in self.counters:
             self.counters[category] += 1
         else:
             self.counters[CATEGORY_UNKNOWN] += 1
 
-        # Add to history
-        self.history.append(result)
-        
-        # Log event
-        log_session_step(
-            "INSPECTION",
-            f"Detected {category} (Confidence: {int(confidence*100)}%) - {result.get('reason', '')}"
-        )
+        if decision == "ACCEPT":
+            self.counters["ACCEPTED"] += 1
+        elif decision == "REJECT":
+            self.counters["REJECTED"] += 1
 
+        # Persist counters to SQLite
+        db_instance.save_batch_counters(self.counters)
+
+        self.history.append(result)
         self.counters_updated.emit(self.counters.copy())
         self.inspection_completed.emit(result)
 
     def _on_worker_error(self, error_message: str):
-        """Handles worker failure gracefully."""
-        log_session_step("ERROR", f"Classification error: {error_message}")
+        log_session_step("ERROR", f"Inspection error: {error_message}")
 
     def reset_counters(self):
-        """Resets all category counters to zero."""
         for cat in self.counters:
             self.counters[cat] = 0
+        db_instance.save_batch_counters(self.counters)
         self.counters_updated.emit(self.counters.copy())
-        log_session_step("SYSTEM", "Category counters reset to zero.")
+        db_instance.reset_tray_counts()
+        log_session_step("SYSTEM", "Batch counters reset.")
 
     def clear_history(self):
-        """Clears in-memory inspection history."""
         self.history.clear()
+        db_instance.clear_history()
         log_session_step("SYSTEM", "Inspection history cleared.")

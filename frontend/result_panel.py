@@ -1,23 +1,23 @@
 """
-Result and Counters Panel for AI Fastener Inspection System.
-Displays primary classification outcome, confidence level badge, engineering reasoning,
-and live category counters with reset capabilities.
+Redesigned Industrial Workstation Result Panel for AI Fastener Inspection System.
+Displays Crisp Fastener Category, Matched ISO Standard Size, Calibrated Metric Parameter Grid,
+Real-Time Chute Angle Dial/Gauge, Tolerance Verification Status, and Production Yield.
 """
 
 from typing import Dict, Any
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QGridLayout, QPushButton, QGroupBox
+    QGridLayout, QPushButton, QGroupBox, QProgressBar
 )
 
-from config import (
-    CATEGORY_NUT, CATEGORY_BOLT, CATEGORY_SCREW, CATEGORY_WASHER, CATEGORY_UNKNOWN,
-    CATEGORY_COLORS, get_confidence_level, get_confidence_color
+from backend.config import (
+    CATEGORY_NUT, CATEGORY_BOLT, CATEGORY_SCREW, CATEGORY_WASHER,
+    CATEGORY_UNKNOWN, CATEGORY_COLORS
 )
 
 class ResultPanel(QWidget):
-    """Panel displaying AI classification result card and category statistics."""
+    """Clean industrial engineering result workstation panel."""
     reset_counters_requested = Signal()
 
     def __init__(self, parent=None):
@@ -27,171 +27,221 @@ class ResultPanel(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
-        # ---------------- 1. Primary AI Result Card ----------------
-        self.result_group = QGroupBox("INSPECTION CLASSIFICATION RESULT")
-        result_layout = QVBoxLayout(self.result_group)
-        result_layout.setContentsMargins(14, 16, 14, 14)
-        result_layout.setSpacing(10)
+        # ---------------- 1. Inspection Outcome Header Card ----------------
+        self.header_card = QFrame()
+        self.header_card.setStyleSheet("background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; padding: 10px;")
+        hdr_layout = QVBoxLayout(self.header_card)
+        hdr_layout.setContentsMargins(4, 4, 4, 4)
+        hdr_layout.setSpacing(6)
 
-        # Top tag / status
-        header_layout = QHBoxLayout()
-        tag_lbl = QLabel("DETECTED CATEGORY")
-        tag_lbl.setStyleSheet("font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 1px;")
-        
-        self.confidence_badge = QLabel("READY FOR INSPECTION")
-        self.confidence_badge.setStyleSheet(
-            "background-color: #E2E8F0; color: #475569; font-size: 11px; font-weight: 700; "
-            "padding: 3px 8px; border-radius: 4px;"
+        # Top row: Category + Decision Badge
+        top_row = QHBoxLayout()
+        self.category_label = QLabel("STANDBY")
+        self.category_label.setStyleSheet("font-size: 20px; font-weight: 800; color: #1E293B; letter-spacing: 0.5px;")
+
+        self.decision_badge = QLabel("READY FOR INSPECTION")
+        self.decision_badge.setStyleSheet(
+            "background-color: #64748B; color: #FFFFFF; font-size: 11px; font-weight: 800; "
+            "padding: 4px 10px; border-radius: 4px;"
         )
-        header_layout.addWidget(tag_lbl)
-        header_layout.addStretch()
-        header_layout.addWidget(self.confidence_badge)
-        result_layout.addLayout(header_layout)
+        top_row.addWidget(self.category_label)
+        top_row.addStretch()
+        top_row.addWidget(self.decision_badge)
+        hdr_layout.addLayout(top_row)
 
-        # Big Category Name
-        self.category_label = QLabel("NO OBJECT")
-        self.category_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.category_label.setStyleSheet("font-size: 26px; font-weight: 800; color: #1E293B;")
-        result_layout.addWidget(self.category_label)
+        # Subtitle: Standard Size & Optical Confidence
+        sub_row = QHBoxLayout()
+        self.size_label = QLabel("Standard: Awaiting Part")
+        self.size_label.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D4ED8;")
 
-        # Confidence Bar / Number
-        conf_layout = QHBoxLayout()
-        conf_title = QLabel("AI Model Confidence:")
-        conf_title.setStyleSheet("font-size: 12px; color: #64748B; font-weight: 500;")
-        
-        self.confidence_value = QLabel("-- %")
-        self.confidence_value.setStyleSheet("font-size: 15px; font-weight: 800; color: #2563EB;")
-        
-        conf_layout.addWidget(conf_title)
-        conf_layout.addWidget(self.confidence_value)
-        conf_layout.addStretch()
-        result_layout.addLayout(conf_layout)
+        self.conf_label = QLabel("Confidence: -- %")
+        self.conf_label.setStyleSheet("font-size: 11px; font-weight: 600; color: #64748B;")
 
-        # Explanation Box
-        reason_title = QLabel("Engineering Explanation:")
-        reason_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #475569; margin-top: 4px;")
-        result_layout.addWidget(reason_title)
+        sub_row.addWidget(self.size_label)
+        sub_row.addStretch()
+        sub_row.addWidget(self.conf_label)
+        hdr_layout.addLayout(sub_row)
 
-        self.reason_label = QLabel("Load an image or capture a camera frame and click 'ANALYZE FASTENER' to start.")
-        self.reason_label.setWordWrap(True)
-        self.reason_label.setStyleSheet(
-            "background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 4px; "
-            "padding: 10px; font-size: 12px; color: #334155; line-height: 1.4;"
+        layout.addWidget(self.header_card)
+
+        # ---------------- 2. Calibrated Metric Dimension Parameter Matrix ----------------
+        dim_group = QGroupBox("CALIBRATED PHYSICAL MEASUREMENTS (OPENCV)")
+        dim_layout = QGridLayout(dim_group)
+        dim_layout.setContentsMargins(8, 10, 8, 8)
+        dim_layout.setHorizontalSpacing(8)
+        dim_layout.setVerticalSpacing(8)
+
+        # 4 Metric Readout Tiles
+        self.tile_len, self.val_length = self._create_metric_tile("Length (L)", "-- mm")
+        self.tile_stem, self.val_stem_dia = self._create_metric_tile("Stem / Shank Dia (Ø)", "-- mm")
+        self.tile_head, self.val_head_width = self._create_metric_tile("Head / AF Width", "-- mm")
+        self.tile_inner, self.val_inner_dia = self._create_metric_tile("Inner Hole Dia (d1)", "-- mm")
+
+        dim_layout.addWidget(self.tile_len, 0, 0)
+        dim_layout.addWidget(self.tile_stem, 0, 1)
+        dim_layout.addWidget(self.tile_head, 1, 0)
+        dim_layout.addWidget(self.tile_inner, 1, 1)
+
+        layout.addWidget(dim_group)
+
+        # ---------------- 3. Active Sorting Chute Destination & Servo Dial ----------------
+        chute_group = QGroupBox("ACTIVE SORTING CHUTE DISPATCH")
+        chute_layout = QVBoxLayout(chute_group)
+        chute_layout.setContentsMargins(10, 10, 10, 8)
+        chute_layout.setSpacing(6)
+
+        c_row = QHBoxLayout()
+        self.tray_dest_lbl = QLabel("Destination: Bin 1 (Awaiting Trigger)")
+        self.tray_dest_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #0F172A;")
+
+        self.angle_dest_lbl = QLabel("Chute Angle: 0°")
+        self.angle_dest_lbl.setStyleSheet("font-size: 12px; font-weight: 800; color: #1D4ED8;")
+
+        c_row.addWidget(self.tray_dest_lbl)
+        c_row.addStretch()
+        c_row.addWidget(self.angle_dest_lbl)
+        chute_layout.addLayout(c_row)
+
+        # Visual Servo Position Gauge (0° to 180°)
+        self.servo_gauge = QProgressBar()
+        self.servo_gauge.setRange(0, 180)
+        self.servo_gauge.setValue(0)
+        self.servo_gauge.setFormat("Chute Servo Angle: %v° / 180°")
+        self.servo_gauge.setStyleSheet("QProgressBar::chunk { background-color: #1D4ED8; border-radius: 2px; }")
+        chute_layout.addWidget(self.servo_gauge)
+
+        layout.addWidget(chute_group)
+
+        # ---------------- 4. Engineering Verification Notes ----------------
+        self.reason_card = QLabel("Place fastener on inspection pad and press 'INSPECT, MEASURE & SORT'.")
+        self.reason_card.setWordWrap(True)
+        self.reason_card.setStyleSheet(
+            "background-color: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 4px; "
+            "padding: 8px; font-size: 11px; color: #334155; line-height: 1.4;"
         )
-        self.reason_label.setMinimumHeight(60)
-        result_layout.addWidget(self.reason_label)
+        layout.addWidget(self.reason_card)
 
-        layout.addWidget(self.result_group)
+        # ---------------- 5. Production Yield & Batch Stats ----------------
+        stats_group = QGroupBox("BATCH QUALITY & YIELD STATISTICS")
+        stats_layout = QVBoxLayout(stats_group)
+        stats_layout.setContentsMargins(8, 10, 8, 8)
+        stats_layout.setSpacing(6)
 
-        # ---------------- 2. Category Counters Card ----------------
-        self.counters_group = QGroupBox("FASTENER BATCH COUNTERS")
-        counters_layout = QVBoxLayout(self.counters_group)
-        counters_layout.setContentsMargins(12, 14, 12, 12)
-        counters_layout.setSpacing(10)
-
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(8)
+        s_grid = QGridLayout()
+        s_grid.setHorizontalSpacing(8)
+        s_grid.setVerticalSpacing(4)
 
         self.counter_labels = {}
-        categories = [
-            ("NUTS", CATEGORY_NUT, "#2563EB"),
+        items = [
+            ("ACCEPTED", "ACCEPTED", "#15803D"),
+            ("REJECTED", "REJECTED", "#DC2626"),
             ("BOLTS", CATEGORY_BOLT, "#059669"),
+            ("NUTS", CATEGORY_NUT, "#2563EB"),
             ("SCREWS", CATEGORY_SCREW, "#D97706"),
             ("WASHERS", CATEGORY_WASHER, "#7C3AED"),
-            ("UNKNOWN", CATEGORY_UNKNOWN, "#64748B")
         ]
 
-        for idx, (display_name, key, color) in enumerate(categories):
-            row = idx // 2
-            col = (idx % 2) * 2
+        for idx, (display_name, key, color) in enumerate(items):
+            r = idx // 2
+            c = (idx % 2) * 2
 
-            # Name label
-            name_lbl = QLabel(display_name)
-            name_lbl.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {color};")
-            
-            # Value box
-            val_lbl = QLabel("0")
-            val_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            val_lbl.setStyleSheet(
-                "background-color: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 4px; "
-                "font-size: 14px; font-weight: 700; color: #0F172A; padding: 4px 10px; min-width: 32px;"
+            n_lbl = QLabel(display_name)
+            n_lbl.setStyleSheet(f"font-size: 10px; font-weight: 700; color: {color};")
+
+            v_lbl = QLabel("0")
+            v_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            v_lbl.setStyleSheet(
+                "background-color: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 3px; "
+                "font-size: 12px; font-weight: 700; color: #0F172A; padding: 2px 6px; min-width: 26px;"
             )
-            self.counter_labels[key] = val_lbl
+            self.counter_labels[key] = v_lbl
 
-            grid.addWidget(name_lbl, row, col)
-            grid.addWidget(val_lbl, row, col + 1)
+            s_grid.addWidget(n_lbl, r, c)
+            s_grid.addWidget(v_lbl, r, c + 1)
 
-        counters_layout.addLayout(grid)
+        stats_layout.addLayout(s_grid)
 
         # Reset button
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        self.reset_btn = QPushButton("Reset Counters")
-        self.reset_btn.setObjectName("dangerBtn")
-        self.reset_btn.clicked.connect(self.reset_counters_requested.emit)
-        btn_layout.addWidget(self.reset_btn)
-        counters_layout.addLayout(btn_layout)
+        rst_btn = QPushButton("Reset Batch Stats")
+        rst_btn.setObjectName("dangerBtn")
+        rst_btn.clicked.connect(self.reset_counters_requested.emit)
+        stats_layout.addWidget(rst_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
-        layout.addWidget(self.counters_group)
+        layout.addWidget(stats_group)
+
+    def _create_metric_tile(self, title: str, default_val: str):
+        tile = QFrame()
+        tile.setStyleSheet("background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 4px; padding: 6px;")
+        t_layout = QVBoxLayout(tile)
+        t_layout.setContentsMargins(2, 2, 2, 2)
+        t_layout.setSpacing(2)
+
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet("font-size: 10px; font-weight: 600; color: #64748B;")
+
+        val_lbl = QLabel(default_val)
+        val_lbl.setStyleSheet("font-size: 13px; font-weight: 800; color: #0F172A;")
+
+        t_layout.addWidget(title_lbl)
+        t_layout.addWidget(val_lbl)
+        return tile, val_lbl
 
     def display_result(self, result: Dict[str, Any]):
-        """Updates UI elements with classification outcome."""
         category = result.get("category", CATEGORY_UNKNOWN).upper()
+        detected_size = result.get("detected_size", "Unknown Size")
+        decision = result.get("decision", "REJECT")
         confidence = float(result.get("confidence", 0.0))
+        tray_id = result.get("assigned_tray", 1)
+        angle = result.get("servo_angle", 45)
         reason = result.get("reason", "")
 
-        conf_pct = int(confidence * 100) if confidence <= 1.0 else int(confidence)
-        conf_level = get_confidence_level(confidence if confidence <= 1.0 else confidence / 100.0)
-        badge_color = get_confidence_color(confidence if confidence <= 1.0 else confidence / 100.0)
-        cat_color = CATEGORY_COLORS.get(category, "#1E293B")
-
-        # Update category label
+        cat_color = CATEGORY_COLORS.get(category, "#0F172A")
         self.category_label.setText(category)
-        self.category_label.setStyleSheet(f"font-size: 26px; font-weight: 800; color: {cat_color};")
+        self.category_label.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {cat_color};")
 
-        # Update confidence badge
-        self.confidence_badge.setText(conf_level)
-        self.confidence_badge.setStyleSheet(
-            f"background-color: {badge_color}; color: #FFFFFF; font-size: 11px; font-weight: 700; "
-            f"padding: 3px 8px; border-radius: 4px;"
-        )
+        # Decision Pill Styling
+        if decision == "ACCEPT":
+            self.decision_badge.setText("ACCEPTED (IN SPEC)")
+            self.decision_badge.setStyleSheet("background-color: #15803D; color: #FFFFFF; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 4px;")
+        elif decision == "REINSPECT":
+            self.decision_badge.setText("REINSPECT (AMBIGUOUS)")
+            self.decision_badge.setStyleSheet("background-color: #D97706; color: #FFFFFF; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 4px;")
+        else:
+            self.decision_badge.setText("REJECTED (OUT OF SPEC)")
+            self.decision_badge.setStyleSheet("background-color: #DC2626; color: #FFFFFF; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 4px;")
 
-        # Update confidence value
-        self.confidence_value.setText(f"{conf_pct}%")
-        self.confidence_value.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {badge_color};")
+        self.size_label.setText(f"Standard: {detected_size}")
+        self.conf_label.setText(f"Confidence: {int(confidence * 100)}%")
 
-        # Update reason
-        self.reason_label.setText(reason)
+        # Dimension Tiles
+        len_val = result.get("length_mm", 0.0)
+        stem_val = result.get("stem_dia_mm", 0.0)
+        head_val = result.get("head_width_mm", 0.0)
+        inner_val = result.get("inner_dia_mm", 0.0)
+
+        self.val_length.setText(f"{len_val:.2f} mm" if len_val > 0 else "-- mm")
+        self.val_stem_dia.setText(f"{stem_val:.2f} mm" if stem_val > 0 else "-- mm")
+        self.val_head_width.setText(f"{head_val:.2f} mm" if head_val > 0 else "-- mm")
+        self.val_inner_dia.setText(f"{inner_val:.2f} mm" if inner_val > 0 else "-- mm")
+
+        # Sorting Destination & Gauge
+        self.tray_dest_lbl.setText(f"Destination: Bin {tray_id}")
+        self.angle_dest_lbl.setText(f"Chute Angle: {angle}°")
+        self.servo_gauge.setValue(angle)
+
+        self.reason_card.setText(reason)
 
     def update_counters(self, counters: Dict[str, int]):
-        """Updates category counter badge labels."""
         for cat, val in counters.items():
             if cat in self.counter_labels:
                 self.counter_labels[cat].setText(str(val))
 
     def set_analyzing_state(self):
-        """Displays transient 'Analyzing...' UI state."""
-        self.category_label.setText("ANALYZING...")
-        self.category_label.setStyleSheet("font-size: 24px; font-weight: 700; color: #2563EB;")
-        self.confidence_badge.setText("PROCESSING")
-        self.confidence_badge.setStyleSheet(
-            "background-color: #2563EB; color: #FFFFFF; font-size: 11px; font-weight: 700; "
-            "padding: 3px 8px; border-radius: 4px;"
-        )
-        self.confidence_value.setText("-- %")
-        self.reason_label.setText("Querying Gemini Vision model for fastener geometry analysis...")
-
-    def set_live_scanning_state(self):
-        """Displays real-time 'Live Scanning...' UI state."""
-        self.category_label.setText("SCANNING...")
-        self.category_label.setStyleSheet("font-size: 24px; font-weight: 700; color: #059669;")
-        self.confidence_badge.setText("LIVE AI")
-        self.confidence_badge.setStyleSheet(
-            "background-color: #059669; color: #FFFFFF; font-size: 11px; font-weight: 700; "
-            "padding: 3px 8px; border-radius: 4px;"
-        )
-        self.confidence_value.setText("-- %")
-        self.reason_label.setText("⚡ Live Mode Active: Present any bolt, screw, nut, or washer to the camera.")
+        self.category_label.setText("INSPECTING...")
+        self.category_label.setStyleSheet("font-size: 20px; font-weight: 700; color: #1D4ED8;")
+        self.decision_badge.setText("PROCESSING...")
+        self.decision_badge.setStyleSheet("background-color: #1D4ED8; color: #FFFFFF; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 4px;")
+        self.size_label.setText("Standard: Measuring geometry...")
+        self.reason_card.setText("Isolating contour, computing calibrated millimeter dimensions, and cross-checking ISO tolerance rules...")

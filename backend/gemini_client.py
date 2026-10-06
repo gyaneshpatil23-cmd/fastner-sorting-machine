@@ -12,13 +12,13 @@ import numpy as np
 from PIL import Image
 import io
 
-from config import (
+from backend.config import (
     ALLOWED_CATEGORIES,
     CATEGORY_UNKNOWN,
     DEFAULT_MODEL,
     get_gemini_api_key
 )
-from logger import app_logger
+from backend.logger import app_logger
 
 # System instructions and classification prompt
 FASTENER_CLASSIFICATION_PROMPT = """You are an industrial fastener classification vision system.

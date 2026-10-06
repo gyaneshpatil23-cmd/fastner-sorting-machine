@@ -8,7 +8,7 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from config import LOGS_DIR, BASE_DIR
+from backend.config import LOGS_DIR, BASE_DIR
 
 APP_LOG_FILE = LOGS_DIR / "application.log"
 TRACKING_LOG_FILE = BASE_DIR / "logs.txt"

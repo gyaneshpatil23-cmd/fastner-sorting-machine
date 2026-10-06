@@ -10,10 +10,10 @@ from typing import Dict, Any, Tuple, Optional, List
 import cv2
 import numpy as np
 
-from config import (
+from backend.config import (
     CATEGORY_NUT, CATEGORY_BOLT, CATEGORY_SCREW, CATEGORY_WASHER, CATEGORY_UNKNOWN
 )
-from logger import app_logger
+from backend.logger import app_logger
 
 class LocalFastenerClassifier:
     """Offline rule-based and geometric feature vision classifier for industrial fasteners."""

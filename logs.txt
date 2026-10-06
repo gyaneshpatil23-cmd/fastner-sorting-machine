@@ -25,6 +25,17 @@
 [2026-09-10 11:28:01] [IMAGE] Loaded image file: F5081177-01.webp
 [2026-09-10 11:29:30] [ENHANCEMENT] Adding built-in Local Offline Computer Vision Engine with OpenCV geometry & contour feature extractor so classification works 100% locally without requiring a Gemini API key.
 [2026-09-10 11:31:21] [TESTS] Validated 100% local classification on all sample fasteners: NUT (95%), BOLT (97%), SCREW (96%), WASHER (96%). Zero-config mode ready.
+[2026-09-24 14:15:30] [FULL_SYSTEM] Commencing Complete Industrial Fastener Vision, Measurement & Sorting Suite build.
+[2026-09-24 14:15:30] [FULL_SYSTEM] Features: OpenCV dimensional measurement (length, stem diameter, head width, inner/outer dia in mm), Calibration tool, Specification database (M3-M16 tolerances), Multi-fastener & Single-fastener mode, 10-tray sorting chute manager, ESP32 Wi-Fi/Serial communication manager + built-in hardware simulator, and Camera selector with external camera auto-preference.
+[2026-09-24 14:22:35] [TESTS] All 6 industrial suite verification tests passed (Database, Measurement, Verification, Simulator, Multi-tab GUI).
+[2026-09-24 14:22:45] [COMPLETE] Full client-ready industrial fastener inspection and sorting software suite is complete and ready to run.
+[2026-09-24 15:29:40] [CUSTOMIZATION] Implementing fully dynamic bin configuration (custom bin counts 2-12, per-bin fastener assignments, custom servo angles, auto-spacing calculator).
+[2026-09-24 15:29:40] [UI_REDESIGN] Redesigning primary inspection workstation with clean industrial engineering layout, live chute servo dial gauge, structured metric parameter cards, and professional dark/slate industrial HUD (no neon effects).
+[2026-09-24 15:39:50] [COMPLETE] Fully customizable bin manager and redesigned clean engineering primary workstation validated and ready.
+[2026-09-24 15:53:15] [PERSISTENCE_ESTOP] Upgrading SQLite database to persist all batch counts, custom categories/sizes, and historical data across restarts without loss.
+[2026-09-24 15:53:15] [CATEGORY_SPLIT] Implementing dedicated hierarchical tabbed specification manager (Bolts, Nuts, Washers, Screws, Custom Categories) with Add/Edit/Delete dialogs.
+[2026-09-24 15:53:15] [EMERGENCY_STOP] Adding prominent hardware & software Emergency Stop (E-STOP) kill switch with fail-safe recovery and ready-to-flash ESP32 Arduino firmware (firmware_esp32.ino).
+[2026-09-24 15:54:47] [COMPLETE] All 7 verification tests passed. Hierarchical category management, SQLite data persistence across sessions, emergency kill switch, and ESP32 embedded firmware complete.
 [2026-09-10 11:30:38] [INSPECTION] Detected NUT (Confidence: 95%) - Test
 [2026-09-10 11:30:38] [SYSTEM] Category counters reset to zero.
 [2026-09-10 11:30:38] [STARTUP] Application initialized and UI ready.
@@ -132,3 +143,287 @@
 [2026-09-10 21:59:08] [CAMERA] Camera stream started.
 [2026-09-10 21:59:32] [LIVE_MODE] Live fastener AI detection mode stopped.
 [2026-09-10 21:59:34] [CAMERA] Camera stream stopped.
+[2026-09-11 02:47:32] [CAMERA] Camera stream started.
+[2026-09-11 02:51:39] [SHUTDOWN] Application closed cleanly.
+[2026-09-11 02:51:39] [CAMERA] Camera stream stopped.
+[2026-09-15 14:33:17] [STARTUP] Application initialized and UI ready.
+[2026-09-15 14:33:17] [MAIN] Desktop application GUI loop started.
+[2026-09-15 14:33:35] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg
+[2026-09-15 14:33:39] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:33:39] [INSPECTION] Detected SCREW (Confidence: 98%) - Local Vision: Elongated threaded fastener (Aspect Ratio: 4.00) with sharp tapered driving tip (Tip Ratio: 0.36) and driving head.
+[2026-09-15 14:33:43] [SHUTDOWN] Application closed cleanly.
+[2026-09-15 14:43:45] [STARTUP] Application initialized and UI ready.
+[2026-09-15 14:43:45] [MAIN] Desktop application GUI loop started.
+[2026-09-15 14:43:57] [IMAGE] Loaded image file: Hex-Nut.jpg
+[2026-09-15 14:43:59] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:43:59] [INSPECTION] Detected SCREW (Confidence: 98%) - Local Vision: Elongated threaded fastener (Aspect Ratio: 2.01) with sharp tapered driving tip (Tip Ratio: 0.40) and driving head.
+[2026-09-15 14:44:08] [IMAGE] Loaded image file: F5081177-01.webp
+[2026-09-15 14:44:10] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:44:10] [INSPECTION] Detected BOLT (Confidence: 98%) - Local Vision: Threaded cylindrical shaft with prominent head and blunt flat end (Aspect Ratio: 2.43, End Ratio: 0.54).
+[2026-09-15 14:44:12] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:44:12] [INSPECTION] Detected BOLT (Confidence: 98%) - Local Vision: Threaded cylindrical shaft with prominent head and blunt flat end (Aspect Ratio: 2.43, End Ratio: 0.54).
+[2026-09-15 14:44:53] [IMAGE] Loaded image file: images (1).jpg
+[2026-09-15 14:44:54] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:44:54] [INSPECTION] Detected NUT (Confidence: 95%) - Local Vision: Internally-holed fastener with faceted hexagonal profile (Compactness: 0.86, Facets: 6).
+[2026-09-15 14:44:55] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:44:55] [INSPECTION] Detected NUT (Confidence: 95%) - Local Vision: Internally-holed fastener with faceted hexagonal profile (Compactness: 0.86, Facets: 6).
+[2026-09-15 14:45:04] [LIVE_MODE] Live fastener AI detection mode started.
+[2026-09-15 14:45:05] [CAMERA] Camera stream started.
+[2026-09-15 14:45:07] [LIVE_MODE] Live fastener AI detection mode stopped.
+[2026-09-15 14:45:11] [CAMERA] Camera stream stopped.
+[2026-09-15 14:47:56] [SHUTDOWN] Application closed cleanly.
+[2026-09-15 14:51:42] [STARTUP] Application initialized and UI ready.
+[2026-09-15 14:51:42] [MAIN] Desktop application GUI loop started.
+[2026-09-15 14:52:02] [IMAGE] Loaded image file: images (1).jpg
+[2026-09-15 14:52:03] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:52:04] [INSPECTION] Detected NUT (Confidence: 95%) - Local Vision: Internally-holed fastener with faceted hexagonal profile (Compactness: 0.86, Facets: 6).
+[2026-09-15 14:52:11] [LIVE_MODE] Live fastener AI detection mode started.
+[2026-09-15 14:52:13] [CAMERA] Camera stream started.
+[2026-09-15 14:52:25] [LIVE_MODE] Live fastener AI detection mode stopped.
+[2026-09-15 14:52:26] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg
+[2026-09-15 14:52:26] [CAMERA] Camera stream stopped.
+[2026-09-15 14:52:35] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg
+[2026-09-15 14:52:37] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:52:37] [INSPECTION] Detected SCREW (Confidence: 98%) - Local Vision: Elongated threaded fastener (Aspect Ratio: 4.00) with sharp tapered driving tip (Tip Ratio: 0.36) and driving head.
+[2026-09-15 14:52:43] [IMAGE] Loaded image file: images.jpg
+[2026-09-15 14:52:44] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:52:44] [INSPECTION] Detected WASHER (Confidence: 96%) - Local Vision: Annular flat ring with circular geometry and central hole (Compactness: 0.99, Circularity: 0.90).
+[2026-09-15 14:55:39] [IMAGE] Loaded image file: F5081177-01.webp
+[2026-09-15 14:56:03] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 14:56:03] [INSPECTION] Detected BOLT (Confidence: 98%) - Local Vision: Threaded cylindrical shaft with prominent head and blunt flat end (Aspect Ratio: 2.43, End Ratio: 0.54).
+[2026-09-15 14:57:55] [SETTINGS] Saved configuration: Model=Local Offline Vision Engine (Zero-Config), Key Updated=Yes
+[2026-09-15 14:57:55] [SETTINGS] Active model updated to: Local Offline Vision Engine (Zero-Config)
+[2026-09-15 15:00:26] [CAMERA] Camera stream started.
+[2026-09-15 15:00:39] [CAMERA] Camera stream stopped.
+[2026-09-15 15:04:16] [SYSTEM] Category counters reset to zero.
+[2026-09-15 15:05:24] [STARTUP] Application initialized and UI ready.
+[2026-09-15 15:05:24] [MAIN] Desktop application GUI loop started.
+[2026-09-15 15:05:34] [IMAGE] Loaded image file: images.jpg
+[2026-09-15 15:05:40] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-15 15:05:40] [INSPECTION] Detected WASHER (Confidence: 96%) - Local Vision: Annular flat ring with circular geometry and central hole (Compactness: 0.99, Circularity: 0.90).
+[2026-09-15 15:05:42] [SHUTDOWN] Application closed cleanly.
+[2026-09-15 15:52:49] [SHUTDOWN] Application closed cleanly.
+[2026-09-16 00:03:32] [STARTUP] Application initialized and UI ready.
+[2026-09-16 00:03:32] [MAIN] Desktop application GUI loop started.
+[2026-09-16 00:06:42] [SHUTDOWN] Application closed cleanly.
+[2026-09-16 00:09:21] [STARTUP] Application initialized and UI ready.
+[2026-09-16 00:09:21] [MAIN] Desktop application GUI loop started.
+[2026-09-16 00:09:54] [IMAGE] Loaded image file: images (1).jpg
+[2026-09-16 00:10:07] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-16 00:10:07] [INSPECTION] Detected NUT (Confidence: 95%) - Local Vision: Internally-holed fastener with faceted hexagonal profile (Compactness: 0.86, Facets: 6).
+[2026-09-16 00:10:20] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg
+[2026-09-16 00:10:21] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-16 00:10:21] [INSPECTION] Detected SCREW (Confidence: 98%) - Local Vision: Elongated threaded fastener (Aspect Ratio: 4.00) with sharp tapered driving tip (Tip Ratio: 0.36) and driving head.
+[2026-09-16 00:11:05] [SHUTDOWN] Application closed cleanly.
+[2026-09-16 13:40:01] [STARTUP] Application initialized and UI ready.
+[2026-09-16 13:40:02] [MAIN] Desktop application GUI loop started.
+[2026-09-16 13:40:27] [IMAGE] Loaded image file: images (1).jpg
+[2026-09-16 13:40:39] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-16 13:40:39] [INSPECTION] Detected NUT (Confidence: 95%) - Local Vision: Internally-holed fastener with faceted hexagonal profile (Compactness: 0.86, Facets: 6).
+[2026-09-16 13:40:51] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg
+[2026-09-16 13:40:54] [INFERENCE] Analyzing fastener image via Local Offline Vision Engine...
+[2026-09-16 13:40:54] [INSPECTION] Detected SCREW (Confidence: 98%) - Local Vision: Elongated threaded fastener (Aspect Ratio: 4.00) with sharp tapered driving tip (Tip Ratio: 0.36) and driving head.
+[2026-09-16 13:43:24] [CAMERA] Camera stream started.
+[2026-09-16 13:45:00] [LIVE_MODE] Live fastener AI detection mode started.
+[2026-09-16 13:47:15] [LIVE_MODE] Live fastener AI detection mode stopped.
+[2026-09-16 13:47:15] [SHUTDOWN] Application closed cleanly.
+[2026-09-16 13:47:15] [CAMERA] Camera stream stopped.
+[2026-09-16 13:47:39] [STARTUP] Application initialized and UI ready.
+[2026-09-16 13:47:40] [MAIN] Desktop application GUI loop started.
+[2026-09-16 13:47:45] [LIVE_MODE] Live fastener AI detection mode started.
+[2026-09-16 13:47:47] [CAMERA] Camera stream started.
+[2026-09-16 13:48:48] [LIVE_MODE] Live fastener AI detection mode stopped.
+[2026-09-16 13:48:48] [SHUTDOWN] Application closed cleanly.
+[2026-09-16 13:48:48] [CAMERA] Camera stream stopped.
+[2026-09-22 21:07:42] [STARTUP] Application initialized and UI ready.
+[2026-09-22 21:07:42] [MAIN] Desktop application GUI loop started.
+[2026-09-22 21:34:14] [SHUTDOWN] Application closed cleanly.
+[2026-09-24 14:22:28] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-09-24 14:22:28] [HARDWARE_CMD] {"command": "SORT", "tray": 3, "angle": 54}
+[2026-09-24 14:22:33] [STARTUP] Industrial Fastener Inspection Suite initialized.
+[2026-09-24 14:22:35] [SHUTDOWN] Application closed cleanly.
+[2026-09-24 14:22:35] [TESTS] All 6 industrial suite verification tests passed.
+[2026-09-24 14:29:00] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-09-24 14:29:00] [HARDWARE_CMD] {"command": "SORT", "tray": 3, "angle": 54}
+[2026-09-24 14:29:03] [STARTUP] Industrial Fastener Inspection Suite initialized.
+[2026-09-24 14:29:04] [SHUTDOWN] Application closed cleanly.
+[2026-09-24 14:29:04] [TESTS] All 6 industrial suite verification tests passed.
+[2026-09-24 14:29:19] [STARTUP] Industrial Fastener Inspection Suite initialized.
+[2026-09-24 14:29:20] [MAIN] Desktop application GUI loop started.
+[2026-09-24 14:29:52] [IMAGE] Loaded image file: images.jpg
+[2026-09-24 14:29:54] [DECISION] REJECT: M10 Washer -> Tray 10 (180°)
+[2026-09-24 14:29:54] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 180}
+[2026-09-24 14:29:55] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-09-24 14:29:55] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-09-24 14:29:56] [HARDWARE_CMD] {"command": "RESET"}
+[2026-09-24 14:30:24] [IMAGE] Loaded image file: images (1).jpg
+[2026-09-24 14:30:26] [DECISION] REJECT: M12 Nut -> Tray 10 (180°)
+[2026-09-24 14:30:26] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 180}
+[2026-09-24 14:30:26] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-09-24 14:30:27] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-09-24 14:30:28] [HARDWARE_CMD] {"command": "RESET"}
+[2026-09-24 14:30:57] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-09-24 14:30:59] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-09-24 14:31:01] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 0}
+[2026-09-24 14:31:05] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "STOP"}
+[2026-09-24 14:32:10] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 180}
+[2026-09-24 14:33:03] [SHUTDOWN] Application closed cleanly.
+[2026-09-24 15:39:45] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-09-24 15:39:45] [HARDWARE_CMD] {"command": "SORT", "tray": 3, "angle": 54}
+[2026-09-24 15:39:49] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-09-24 15:39:50] [SHUTDOWN] Application closed cleanly.
+[2026-09-24 15:39:50] [TESTS] All 6 industrial suite verification tests passed.
+[2026-09-24 15:41:59] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-09-24 15:41:59] [MAIN] Desktop application GUI loop started.
+[2026-09-24 15:54:44] [DATABASE] Added new specification: BOLT - M8 x 45 Custom
+[2026-09-24 15:54:44] [DATABASE] Deleted specification ID #22
+[2026-09-24 15:54:44] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-09-24 15:54:44] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-09-24 15:54:44] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-09-24 15:54:44] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-09-24 15:54:44] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-09-24 15:54:44] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 65}
+[2026-09-24 15:54:46] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-09-24 15:54:47] [SHUTDOWN] Application closed cleanly.
+[2026-09-24 15:54:47] [TESTS] All 7 extended industrial suite verification tests passed.
+[2026-09-24 15:56:11] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-09-24 15:56:11] [MAIN] Desktop application GUI loop started.
+[2026-09-24 15:57:18] [CONFIG] Configured 16 active sorting bins with angles [25, 33, 42, 51, 59, 68, 77, 85, 94, 103, 111, 120, 129, 137, 146, 155]
+[2026-09-24 16:03:24] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-09-24 16:03:24] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-09-24 16:03:28] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-09-24 16:03:28] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-09-24 16:03:33] [SHUTDOWN] Application closed cleanly.
+[2026-09-25 18:27:55] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-09-25 18:27:55] [MAIN] Desktop application GUI loop started.
+[2026-09-25 18:28:12] [CONFIG] Configured 5 active sorting bins with angles [25, 57, 90, 122, 155]
+[2026-09-25 18:28:51] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg
+[2026-09-25 18:28:53] [DECISION] REJECT: M6 x 30 Screw -> Tray 10 (103°)
+[2026-09-25 18:28:53] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-09-25 18:28:54] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-09-25 18:28:54] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-09-25 18:28:55] [HARDWARE_CMD] {"command": "RESET"}
+[2026-09-25 18:29:11] [SYSTEM] Batch counters reset.
+[2026-09-25 18:29:36] [SHUTDOWN] Application closed cleanly.
+[2026-09-26 14:10:57] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-09-26 14:10:57] [MAIN] Desktop application GUI loop started.
+[2026-09-26 14:11:28] [IMAGE] Loaded image file: images (1).jpg
+[2026-09-26 14:11:41] [DECISION] REJECT: M12 Nut -> Tray 10 (103°)
+[2026-09-26 14:11:41] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-09-26 14:11:41] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-09-26 14:11:42] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-09-26 14:11:43] [HARDWARE_CMD] {"command": "RESET"}
+[2026-09-26 14:11:56] [DECISION] REJECT: M12 Nut -> Tray 10 (103°)
+[2026-09-26 14:11:56] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-09-26 14:11:57] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-09-26 14:11:57] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-09-26 14:11:59] [HARDWARE_CMD] {"command": "RESET"}
+[2026-09-26 14:37:54] [CONFIG] Configured 7 active sorting bins with angles [25, 50, 76, 102, 128, 154, 180]
+[2026-09-27 21:07:01] [SHUTDOWN] Application closed cleanly.
+[2026-10-04 11:01:47] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-04 11:01:47] [MAIN] Desktop application GUI loop started.
+[2026-10-04 13:08:35] [SHUTDOWN] Application closed cleanly.
+[2026-10-04 13:28:05] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-04 13:28:05] [MAIN] Desktop application GUI loop started.
+[2026-10-04 13:28:24] [IMAGE] Loaded image file: F5081177-01.webp
+[2026-10-04 13:28:26] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 13:28:26] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:28:26] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:28:27] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:28:28] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:28:51] [IMAGE] Loaded image file: images (1).jpg
+[2026-10-04 13:28:53] [DECISION] REJECT: M12 Nut -> Tray 10 (103°)
+[2026-10-04 13:28:53] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:28:53] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:28:54] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:28:55] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:29:40] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg
+[2026-10-04 13:29:42] [DECISION] REJECT: M6 x 30 Screw -> Tray 10 (103°)
+[2026-10-04 13:29:42] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:29:42] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:29:43] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:29:44] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:30:54] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 13:30:54] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:30:55] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:30:55] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:30:56] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:30:59] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 13:30:59] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:30:59] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:30:59] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:31:01] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:31:03] [DECISION] REJECT: M12 Nut -> Tray 10 (103°)
+[2026-10-04 13:31:03] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:31:03] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:31:04] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:31:05] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 13:31:05] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:31:05] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:31:05] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:31:06] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:31:06] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 13:31:06] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:31:06] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:31:07] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:31:07] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:31:08] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:31:10] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 13:31:10] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:31:10] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:31:11] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:31:12] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:35:49] [SHUTDOWN] Application closed cleanly.
+[2026-10-04 13:36:02] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-04 13:36:02] [MAIN] Desktop application GUI loop started.
+[2026-10-04 13:36:25] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 13:36:25] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 13:36:25] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 13:36:26] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 13:36:27] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 13:40:40] [SHUTDOWN] Application closed cleanly.
+[2026-10-04 19:43:01] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-04 19:43:01] [MAIN] Desktop application GUI loop started.
+[2026-10-04 19:43:49] [IMAGE] Loaded image file: one-metal-nut-white-background-one-metal-nut-white-background-top-view-247612008.webp
+[2026-10-04 19:43:51] [DECISION] REJECT: M12 Nut -> Tray 10 (103°)
+[2026-10-04 19:43:51] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 19:43:52] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 19:43:52] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 19:43:53] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 19:44:39] [IMAGE] Loaded image file: bolt.webp
+[2026-10-04 19:44:40] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 19:44:40] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 19:44:41] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 19:44:41] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 19:44:42] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 19:48:46] [IMAGE] Loaded image file: Types-of-fasteners-Screws.jpg
+[2026-10-04 19:48:48] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-04 19:48:48] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-04 19:48:48] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-04 19:48:49] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-04 19:48:50] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-04 20:13:04] [SHUTDOWN] Application closed cleanly.
+[2026-10-05 17:07:57] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-05 17:07:58] [MAIN] Desktop application GUI loop started.
+[2026-10-05 17:08:04] [SHUTDOWN] Application closed cleanly.
+[2026-10-06 15:08:34] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-06 15:08:34] [MAIN] Desktop application GUI loop started.
+[2026-10-06 15:09:00] [IMAGE] Loaded image file: bolt.webp
+[2026-10-06 15:09:06] [DECISION] REJECT: M12 x 60 -> Tray 10 (103°)
+[2026-10-06 15:09:06] [HARDWARE_CMD] {"command": "SORT", "tray": 10, "angle": 103}
+[2026-10-06 15:09:07] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-06 15:09:07] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-06 15:09:08] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-06 15:10:54] [CONFIG] Saved customizations for 7 sorting bins.
+[2026-10-06 15:11:08] [DECISION] REJECT: M12 x 60 -> Tray 7 (180°)
+[2026-10-06 15:11:08] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-06 15:11:08] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-06 15:11:09] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-06 15:11:10] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-06 15:12:48] [IMAGE] Loaded image file: bolts.jpg
+[2026-10-06 15:12:49] [DECISION] REJECT: M12 x 60 -> Tray 7 (180°)
+[2026-10-06 15:12:49] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-06 15:12:49] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-06 15:12:50] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-06 15:12:51] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-06 15:20:10] [SHUTDOWN] Application closed cleanly.

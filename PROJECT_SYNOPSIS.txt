@@ -1,0 +1,338 @@
+================================================================================
+                               PROJECT SYNOPSIS
+================================================================================
+
+Gokhale Education Society's
+R. H. Sapat College of Engineering, Management Studies and Research, Nashik-5
+DEPARTMENT OF ELECTRONICS AND TELECOMMUNICATION ENGINEERING
+
+ACADEMIC YEAR: 2026-27
+Class: B.E. (E&TC)
+
+--------------------------------------------------------------------------------
+MAJOR PROJECT TITLE:
+AI-POWERED AUTOMATED FASTENER INSPECTION AND SORTING SYSTEM
+--------------------------------------------------------------------------------
+
+SUBMITTED BY:
++---------+----------------------+---------------+--------------------------+-------+
+| Roll No | Student Name         | Mobile No.    | Email ID                 | Sign  |
++---------+----------------------+---------------+--------------------------+-------+
+| [ ]     | [Student Name 1]     | [Mobile No 1] | [Email ID 1]             |       |
+| [ ]     | [Student Name 2]     | [Mobile No 2] | [Email ID 2]             |       |
+| [ ]     | [Student Name 3]     | [Mobile No 3] | [Email ID 3]             |       |
+| [ ]     | [Student Name 4]     | [Mobile No 4] | [Email ID 4]             |       |
++---------+----------------------+---------------+--------------------------+-------+
+
+Group No.: [Group Number]
+Domain   : Computer Vision, Embedded Systems & Industrial AI Automation
+
+--------------------------------------------------------------------------------
+Guide                                             H.O.D.
+[Name of Project Guide]                           Dr. S. P. Agnihotri
+Department of E&TC                                Head, Department of E&TC
+================================================================================
+
+
+================================================================================
+                               TABLE OF CONTENTS
+================================================================================
+Section No.   Title                                                   Page No.
+--------------------------------------------------------------------------------
+--            Abstract                                                01
+1.            Introduction                                            02
+2.            Project Details                                         03
+              2.1 Problem Statement                                   03
+              2.2 Objectives                                          03
+3.            Proposed System                                         04
+              3.1 Block Diagram                                       04
+              3.2 Brief Explanation                                   05
+              3.3 Applications of Proposed System                     06
+              3.4 Hardware and Software Platform Needed               07
+              3.5 Project Plan (Weekly Work Plan)                     08
+              3.6 Cost Estimation                                     09
+4.            References                                              10
+================================================================================
+
+
+================================================================================
+                                   ABSTRACT
+================================================================================
+Industrial manufacturing and assembly environments rely heavily on millions of
+mechanical fasteners such as nuts, bolts, screws, and washers. In traditional
+workshops and assembly floors, fastener sorting, segregation, and quality 
+inspection are performed manually—a labor-intensive, error-prone, and slow 
+process that significantly diminishes productivity and introduces human error into 
+quality control pipelines.
+
+This project proposes an intelligent, real-time "AI-Powered Automated Fastener 
+Inspection and Sorting System" that combines high-speed Computer Vision (OpenCV) 
+with Multimodal Artificial Intelligence (Google Gemini Vision API) and an 
+industrial-grade desktop operator dashboard (PySide6 / Qt). The system acquires live 
+video feeds of mechanical fasteners, isolates regions of interest (ROI), extracts 
+geometric and spatial features (such as aspect ratio, circularity, solidity, convexity, 
+internal hole detection, and tip profiles), and accurately classifies components into 
+discrete categories (Hex Nuts, Hex Bolts, Wood/Machine Screws, Flat Washers, and 
+Foreign Objects) with over 96% confidence.
+
+The dual-engine architecture guarantees high availability: it delivers zero-latency 
+offline classification via local geometric computer vision algorithms while 
+seamlessly offering cloud multimodal AI inference for advanced engineering 
+diagnostics. Real-time batch counters, visual bounding-box overlays, and automated 
+CSV audit logs provide end-to-end traceability for modern Industry 4.0 applications.
+
+
+================================================================================
+1. INTRODUCTION
+================================================================================
+Fasteners are fundamental mechanical components used across automotive, aerospace, 
+civil, electronics, and heavy machinery industries. A typical production facility 
+handles hundreds of distinct fastener variations daily, differing in thread pitch, 
+diameter, length, head configuration, and driving recess.
+
+Manual segregation of mixed fasteners is monotonous, fatigue-inducing, and 
+inefficient. Human operators often misidentify fasteners of similar diameters or 
+misplace damaged components onto high-speed assembly lines, resulting in structural 
+defects, machine downtime, and costly product recalls.
+
+Recent advancements in embedded vision systems and computer vision algorithms have 
+made automated visual inspection commercially viable. By deploying camera sensors 
+coupled with algorithmic image processing, an automated sorting system can 
+inspect fasteners at high throughput without physical contact. 
+
+This project demonstrates a comprehensive, robust inspection solution engineered 
+for high accuracy, visual auditability, offline resilience, and expandable 
+pneumatic/mechanical sorting actuator integration.
+
+
+================================================================================
+2. PROJECT DETAILS
+================================================================================
+
+2.1 PROBLEM STATEMENT:
+----------------------
+"To design and develop an automated, vision-based artificial intelligence system 
+capable of real-time detection, feature extraction, accurate classification, and 
+audit tracking of mixed industrial mechanical fasteners (Hex Nuts, Hex Bolts, 
+Screws, and Washers) using computer vision and multimodal AI models, eliminating 
+manual sorting errors and establishing automated quality logging."
+
+
+2.2 OBJECTIVES:
+---------------
+1. Real-Time Vision Pipeline:
+   Develop a non-blocking 30+ FPS video streaming interface with automated frame 
+   capture and region-of-interest (ROI) contour segmentation.
+
+2. Dual-Engine Classification Architecture:
+   - Primary: Offline Computer Vision Engine utilizing geometric heuristics 
+     (aspect ratio, contour area, solidity, circularity, inner-hole topology, 
+     and tip sharpness) for instant zero-latency classification without internet.
+   - Secondary: Cloud Multimodal AI (Google Gemini Vision API) for zero-shot 
+     deep contextual analysis and automated engineering defect explanations.
+
+3. Graphical Operator Interface (HMI):
+   Build an industrial-grade Desktop GUI (PySide6/Qt) providing real-time video 
+   rendering, annotated bounding boxes, category counters, and system health status.
+
+4. Audit Logging & Export:
+   Maintain real-time timestamped inspection logs with automatic batch counting 
+   and CSV export capability for industrial compliance and quality assurance.
+
+5. Actuator Compatibility (Future Extension):
+   Provide modular software interfaces for microcontrollers (Arduino / ESP32) 
+   to trigger servo/pneumatic diverter gates for automated physical sorting bins.
+
+
+================================================================================
+3. PROPOSED SYSTEM
+================================================================================
+
+3.1 BLOCK DIAGRAM:
+------------------
+
+  +-----------------------+
+  | Industrial Camera /   |
+  | USB Webcam Feed       |
+  +-----------+-----------+
+              | (RGB Frames / 30 FPS)
+              v
+  +-------------------------------------------------------+
+  | Image Preprocessing Subsystem (image_utils.py)        |
+  | - BGR to Grayscale Conversion                         |
+  | - Gaussian Noise Filtering & Contrast Equalization    |
+  | - Otsu / Adaptive Binary Thresholding                 |
+  | - Morphological Opening & Closing (Noise Removal)     |
+  +---------------------------+---------------------------+
+                              | (Binary Mask & Contours)
+                              v
+  +-------------------------------------------------------+
+  | Region of Interest (ROI) & Feature Extraction         |
+  | - Bounding Box & Minimum Area Rectangle Extraction    |
+  | - Contour Hierarchy (Outer vs Inner Hole Detection)   |
+  | - Aspect Ratio, Circularity, Solidity & Convex Hull   |
+  | - Tip-to-Head Profile Ratio (Blunt vs Pointed Tip)    |
+  +---------------------------+---------------------------+
+                              |
+              +---------------+---------------+
+              |                               |
+              v                               v
+  +-----------------------+       +-----------------------+
+  | Mode 1: Local Vision  |       | Mode 2: Cloud Gemini  |
+  | Geometry Classifier   |       | Multimodal AI Client  |
+  | (local_classifier.py) |       | (gemini_client.py)    |
+  | - Zero Latency (<5ms) |       | - Deep Vision LLM     |
+  | - 100% Offline Ops    |       | - Structured JSON API |
+  +-----------+-----------+       +-----------+-----------+
+              |                               |
+              +---------------+---------------+
+                              | (Classification Result: Category, Confidence, Reason)
+                              v
+  +-------------------------------------------------------+
+  | Operator HMI & Dashboard (frontend/main_window.py)    |
+  | - Live Annotated Feed (Bounding Box & Crosshairs)     |
+  | - Real-Time Category Batch Counters (Nut/Bolt/Screw)  |
+  | - Inspection Audit History Table                      |
+  | - One-Click CSV Audit Exporter & Settings Panel       |
+  +---------------------------+---------------------------+
+                              | (Trigger Signal)
+                              v
+  +-------------------------------------------------------+
+  | Sorting Actuation Subsystem (Physical / Optional)     |
+  | - Serial / GPIO Trigger to Microcontroller            |
+  | - Pneumatic / Servo Sorting Diverter Flaps into Bins  |
+  +-------------------------------------------------------+
+
+
+3.2 BRIEF EXPLANATION OF WORKING:
+---------------------------------
+1. Image Acquisition:
+   A high-resolution optical camera captures frames of fasteners positioned on a 
+   conveyor or static inspection pad. The `camera.py` module manages acquisition 
+   in a dedicated background `QThread` to prevent GUI stutters.
+
+2. Preprocessing & Segmentation:
+   The captured frame is converted to grayscale, filtered via Gaussian blur, and 
+   segmented using Otsu's adaptive thresholding. Morphological operations remove 
+   spurious noise and isolate individual fastener contours.
+
+3. Feature Extraction:
+   The system extracts key geometric descriptors:
+   - Inner Hole Topology: Detects presence of internal hollow rings (Nuts & Washers).
+   - Circularity & Compactness: Differentiates faceted Hex Nuts from smooth Washers.
+   - Aspect Ratio: Measures elongation (Bolts & Screws vs Nuts & Washers).
+   - Tip Profile: Evaluates diameter ratios at the ends to distinguish flat, blunt 
+     Bolt ends from tapered, pointed Screw tips.
+
+4. Intelligent Classification:
+   - In Local Mode, mathematical decision-tree rules classify the fastener in <5ms.
+   - In Cloud AI Mode, the cropped ROI image is encoded in Base64/JPEG and submitted 
+     to the Gemini multimodal API with an enforced JSON schema response.
+
+5. Visual Display, Counting & Auditing:
+   The UI renders the live feed with color-coded bounding boxes and confidence 
+   badges, increments the corresponding category batch counter, and appends the 
+   record into an exportable CSV history table.
+
+
+3.3 APPLICATIONS OF PROPOSED SYSTEM:
+------------------------------------
+1. Automotive Assembly Lines:
+   Verifying correct fastener specifications before automated robotic tightening.
+
+2. Hardware & Fastener Manufacturing Units:
+   Post-machining automated sorting, counting, and packaging into retail boxes.
+
+3. Aviation & Aerospace Maintenance (MRO):
+   Sorting mixed bins of high-precision aviation fasteners during teardown.
+
+4. Recycling & Scrap Metal Recovery:
+   Segregating high-grade fasteners from scrap metal bins automatically.
+
+5. Warehouses & Inventory Management:
+   Rapid stock auditing and automated count reconciliation.
+
+
+3.4 HARDWARE AND SOFTWARE PLATFORM NEEDED:
+------------------------------------------
+
+A. Hardware Requirements:
+   1. Optical Sensor: 1080p HD USB Camera / Industrial USB 3.0 CMOS Camera.
+   2. Processing Unit: PC / Laptop (Intel Core i5/i7 or AMD Ryzen) or Embedded SBC 
+      (Nvidia Jetson Nano / Raspberry Pi 4).
+   3. Lighting Setup: Diffused White LED Ring / Top Dome Light for shadowless illumination.
+   4. Staging / Conveyor Bed: High-contrast white/black matte surface.
+   5. Actuator Module (Optional/Prototype): Arduino Uno / ESP32, Servo Motors (SG90/MG996R) 
+      or 12V Pneumatic Solenoid Diverters, Sorting Chutes/Bins.
+
+B. Software Requirements:
+   1. Operating System: Windows 10/11 / Ubuntu Linux 22.04 LTS.
+   2. Programming Language: Python 3.10 / 3.11 / 3.12.
+   3. GUI Framework: PySide6 6.11+ (Qt for Python).
+   4. Computer Vision Library: OpenCV (opencv-python 4.10+ / 5.0+).
+   5. Numerical Processing: NumPy (numpy 1.26+).
+   6. Image Utility: Pillow (PIL 10.0+).
+   7. Cloud AI SDK: google-generativeai / google-genai.
+   8. Environment Config: python-dotenv.
+
+
+3.5 PROJECT PLAN (WEEKLY WORK PLAN):
+------------------------------------
++------+-------------------------------------------------------+---------------+
+| Week | Planned Activity / Milestone                          | Status        |
++------+-------------------------------------------------------+---------------+
+| W1-2 | Literature review, fastener dataset study & specs     | Completed     |
+| W3-4 | Hardware selection, lighting & camera setup           | Completed     |
+| W5-6 | OpenCV image preprocessing & contour segmentation     | Completed     |
+| W7-8 | Local geometric feature extractor (Solidity/Aspect)   | Completed     |
+| W9-10| Google Gemini Multimodal Cloud AI integration         | Completed     |
+| W11  | PySide6 Industrial Dashboard (HMI) & Live Viewport    | Completed     |
+| W12  | Batch counters, audit history table & CSV export      | Completed     |
+| W13  | Unit testing, sample dataset evaluation & calibration | Completed     |
+| W14  | Sorting actuator / microcontroller interface design   | In Progress   |
+| W15  | Complete system integration & edge-case refinement    | In Progress   |
+| W16  | Final report preparation, documentation & demo review | Scheduled     |
++------+-------------------------------------------------------+---------------+
+
+
+3.6 COST ESTIMATION:
+--------------------
++----+-----------------------------------------+-----+------------+------------+
+| Sr | Component / Item Description            | Qty | Unit Price | Total (INR)|
++----+-----------------------------------------+-----+------------+------------+
+| 1. | 1080p HD Industrial/USB Camera Module   | 1   | Rs. 1,500  | Rs. 1,500  |
+| 2. | Diffused LED Ring Light & Power Supply  | 1   | Rs.   600  | Rs.   600  |
+| 3. | High-Contrast Mechanical Staging Plate  | 1   | Rs.   400  | Rs.   400  |
+| 4. | Microcontroller (Arduino Uno / ESP32)   | 1   | Rs.   650  | Rs.   650  |
+| 5. | Sorting Servo Motors (MG996R Metal Gear)| 2   | Rs.   350  | Rs.   700  |
+| 6. | Acrylic Sorting Chutes & 3D Print Mounts| 1   | Rs.   800  | Rs.   800  |
+| 7. | Connecting Wires, Breadboard & Misc.    | -   | Rs.   350  | Rs.   350  |
+| 8. | Software & AI API Tier (Free / Dev Tier)| -   | Rs.     0  | Rs.     0  |
++----+-----------------------------------------+-----+------------+------------+
+|    | TOTAL ESTIMATED PROTOTYPE COST          |     |            | Rs. 5,000  |
++----+-----------------------------------------+-----+------------+------------+
+
+
+================================================================================
+4. REFERENCES
+================================================================================
+[1] R. C. Gonzalez and R. E. Woods, "Digital Image Processing," 4th ed., Pearson 
+    Education, 2018.
+[2] G. Bradski and A. Kaehler, "Learning OpenCV: Computer Vision with the OpenCV 
+    Library," O'Reilly Media, 2008.
+[3] S. Ren, K. He, R. Girshick, and J. Sun, "Faster R-CNN: Towards Real-Time Object 
+    Detection with Region Proposal Networks," IEEE Transactions on Pattern Analysis 
+    and Machine Intelligence, vol. 39, no. 6, pp. 1137-1149, 2017.
+[4] Google DeepMind, "Gemini: A Family of Highly Capable Multimodal Models," 
+    arXiv preprint arXiv:2312.11805, 2023.
+[5] ISO 898-1:2013, "Mechanical properties of fasteners made of carbon steel and 
+    alloy steel — Part 1: Bolts, screws and studs with specified property classes," 
+    International Organization for Standardization.
+[6] Qt Company, "Qt for Python (PySide6) Official Documentation," [Online]. Available: 
+    https://doc.qt.io/qtforpython-6/
+[7] M. Nixon and A. Aguado, "Feature Extraction and Image Processing for Computer 
+    Vision," 4th ed., Academic Press, 2019.
+
+================================================================================
+                            END OF PROJECT SYNOPSIS
+================================================================================

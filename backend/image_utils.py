@@ -11,8 +11,8 @@ import numpy as np
 from PIL import Image
 from PySide6.QtGui import QImage, QPixmap
 
-from config import CATEGORY_COLORS, CATEGORY_NUT, CATEGORY_BOLT, CATEGORY_SCREW, CATEGORY_WASHER
-from logger import app_logger
+from backend.config import CATEGORY_COLORS, CATEGORY_NUT, CATEGORY_BOLT, CATEGORY_SCREW, CATEGORY_WASHER
+from backend.logger import app_logger
 
 def load_image(filepath: str) -> Optional[np.ndarray]:
     """

@@ -1,0 +1,250 @@
+================================================================================
+                    DATASET OVERVIEW & SPECIFICATION DOCUMENT
+================================================================================
+Project Title : AI-Powered Automated Fastener Inspection and Sorting System
+Domain        : Computer Vision, Industrial AI & Mechanical Quality Control
+Academic Year : 2026-27 | Class: B.E. (E&TC)
+Institution   : Gokhale Education Society's R. H. Sapat College of Engineering, Nashik
+================================================================================
+
+--------------------------------------------------------------------------------
+1. DATASET METADATA & SUMMARY
+--------------------------------------------------------------------------------
+Dataset Name          : Industrial Mechanical Fastener Inspection Dataset (IM-FID)
+Primary Task          : Multi-class Visual Object Detection & Classification
+Modality              : 2D Visible Spectrum (RGB & Grayscale Binarized Masks)
+Input Format          : PNG, JPEG, WEBP, BMP
+Standard ROI Size     : 800 x 800 pixels (Dynamic Bounding Box Crop)
+Target Categories (5) : HEX_NUT, HEX_BOLT, SCREW, FLAT_WASHER, OTHER/UNKNOWN
+Dual-Inference Scope  : Local Geometric OpenCV Heuristics & Cloud Multimodal AI (Gemini)
+
+
+--------------------------------------------------------------------------------
+2. TARGET FASTENER CLASSES & MORPHOLOGICAL DESCRIPTIONS
+--------------------------------------------------------------------------------
+
++----+-------------+--------------------+-------------------------------------------+
+| ID | Class Label | Standard ISO Type  | Key Morphological & Visual Characteristics|
++----+-------------+--------------------+-------------------------------------------+
+| 01 | HEX_NUT     | ISO 4032 / DIN 934 | • Faceted 6-sided hexagonal outer profile |
+|    |             |                    | • Concentric circular threaded inner hole |
+|    |             |                    | • Aspect Ratio: ~0.90 to 1.30 (Near 1.0)  |
+|    |             |                    | • Compactness: 0.60 to 0.90               |
+|    |             |                    | • Inner-to-Outer Area Ratio: 0.15 to 0.45 |
++----+-------------+--------------------+-------------------------------------------+
+| 02 | HEX_BOLT    | ISO 4014 / DIN 931 | • Elongated cylindrical threaded shank    |
+|    |             |                    | • Prominent enlarged hexagonal drive head |
+|    |             |                    | • Flat, blunt chamfered bottom end        |
+|    |             |                    | • Aspect Ratio: 2.00 to 6.50 (Elongated)  |
+|    |             |                    | • Head-to-Tip Width Ratio: 1.30 to 2.20   |
+|    |             |                    | • Solidity: 0.70 to 0.92                  |
++----+-------------+--------------------+-------------------------------------------+
+| 03 | SCREW       | ISO 7049 / DIN 7981| • Slender threaded cylindrical/conical rod|
+|    |             | (Wood / Self-Tap)  | • Countersunk, Phillips, or Pan drive head|
+|    |             |                    | • Sharp, tapered conical driving point tip|
+|    |             |                    | • Aspect Ratio: 2.50 to 8.00 (Slender)    |
+|    |             |                    | • Tip-to-Head Width Ratio: < 0.45 (Sharp) |
+|    |             |                    | • Solidity: 0.60 to 0.88                  |
++----+-------------+--------------------+-------------------------------------------+
+| 04 | FLAT_WASHER | ISO 7089 / DIN 125 | • Annular, flat circular disc             |
+|    |             |                    | • Smooth concentric circular central hole |
+|    |             |                    | • Circularity: > 0.82 (High roundness)    |
+|    |             |                    | • Aspect Ratio: 0.92 to 1.15 (Near 1.0)   |
+|    |             |                    | • Inner Hole Diameter Ratio: 0.30 to 0.60 |
+|    |             |                    | • Uniform cross-sectional thickness       |
++----+-------------+--------------------+-------------------------------------------+
+| 05 | OTHER       | Non-fastener / N/A | • Foreign metal debris, tools, scrap, or  |
+|    |             |                    |   severely deformed / crushed fasteners   |
+|    |             |                    | • Low geometric match & confidence (<65%) |
++----+-------------+--------------------+-------------------------------------------+
+
+
+--------------------------------------------------------------------------------
+3. IMAGE ACQUISITION & OPTICAL SPECIFICATIONS
+--------------------------------------------------------------------------------
+
+A. Optical Sensor Specifications:
+   • Sensor Type         : 1/2.7" CMOS Color Optical Sensor
+   • Native Resolution   : 1920 x 1080 (Full HD @ 30 FPS)
+   • Video Interface     : USB 2.0 / USB 3.0 UVC Video Class
+   • Lens & Focal Length : 3.6mm Fixed Focal Lens, Low Distortion (<1.5%)
+   • Working Distance    : 15 cm to 25 cm perpendicular over inspection bed
+   • Field of View (FOV) : 75° Horizontal FOV (covers ~18cm x 12cm staging area)
+
+B. Illumination & Staging Setup:
+   • Light Source        : 6500K Diffused Neutral-White LED Ring Illuminator
+   • Purpose             : Eliminates directional shadows and suppresses metallic glare
+   • Background Bed      : Matte-finish high-contrast white / black acrylic plate
+   • Invariant Condition : Specimen placed without direct physical obstruction
+
+
+--------------------------------------------------------------------------------
+4. DATASET STRUCTURE & REPOSITORY ORGANIZATION
+--------------------------------------------------------------------------------
+
+```
+Fastener-Sorting/
+│
+├── sample_images/                          # Built-in Reference Baseline Dataset
+│   ├── sample_01_hex_nut.png               # High-contrast reference Hex Nut
+│   ├── sample_02_hex_bolt.png              # High-contrast reference Hex Bolt
+│   ├── sample_03_wood_screw.png            # High-contrast reference Wood Screw
+│   └── sample_04_flat_washer.png           # High-contrast reference Flat Washer
+│
+├── dataset/                                # Real-World Capture & Training Split
+│   ├── train/                              # Training partition (70%)
+│   │   ├── nuts/                           # Raw images + JSON metadata
+│   │   ├── bolts/
+│   │   ├── screws/
+│   │   └── washers/
+│   ├── val/                                # Validation partition (15%)
+│   │   ├── nuts/
+│   │   ├── bolts/
+│   │   ├── screws/
+│   │   └── washers/
+│   └── test/                               # Holdout testing partition (15%)
+│       ├── nuts/
+│       ├── bolts/
+│       ├── screws/
+│       ├── washers/
+│       └── others/
+│
+└── logs/                                   # Audit inspection history logs
+    └── history_export_*.csv                # Exported CSV classification records
+```
+
+
+--------------------------------------------------------------------------------
+5. STATISTICAL DISTRIBUTION & DATASET PARTITIONING
+--------------------------------------------------------------------------------
+
++------------------+------------+------------+------------+---------------+
+| Category         | Train (70%)| Val (15%)  | Test (15%) | Total Samples |
++------------------+------------+------------+------------+---------------+
+| 1. Hex Nuts      | 280        | 60         | 60         | 400           |
+| 2. Hex Bolts     | 280        | 60         | 60         | 400           |
+| 3. Screws        | 280        | 60         | 60         | 400           |
+| 4. Flat Washers  | 280        | 60         | 60         | 400           |
+| 5. Other / Debris| 140        | 30         | 30         | 200           |
++------------------+------------+------------+------------+---------------+
+| TOTAL            | 1,260      | 270        | 270        | 1,800         |
++------------------+------------+------------+------------+---------------+
+
+
+--------------------------------------------------------------------------------
+6. MATHEMATICAL GEOMETRIC DESCRIPTORS & EXTRACTED FEATURES
+--------------------------------------------------------------------------------
+The dataset utilizes deterministic computer vision feature extraction computed 
+via OpenCV contour moments and geometric topology:
+
+1. Aspect Ratio (AR):
+   AR = Max(BoundingRect_Width, BoundingRect_Height) / Min(BoundingRect_Width, BoundingRect_Height)
+   • Nuts & Washers : 0.90 <= AR <= 1.35
+   • Bolts & Screws : AR >= 2.00
+
+2. Circularity / Isoperimetric Quotient (C):
+   C = (4 * PI * Area) / (Perimeter^2)
+   • Washers : C >= 0.82 (Circular disc profile)
+   • Hex Nuts: 0.65 <= C <= 0.80 (Hexagonal facets)
+
+3. Solidity (S):
+   S = Contour_Area / ConvexHull_Area
+   • Measures structural concavity and outer thread indentation.
+
+4. Inner-to-Outer Area Topology (Hole Ratio - HR):
+   HR = Area(Inner_Hole_Contour) / Area(Outer_Contour)
+   • Washers & Nuts : 0.12 <= HR <= 0.55 (Internal central clearance hole present)
+   • Bolts & Screws : HR < 0.05 (Solid cylindrical/conical profile)
+
+5. Tip-to-Head Profile Ratio (TR):
+   TR = Mean_Width(First 15% of Shaft Length) / Mean_Width(Last 15% of Shaft Length)
+   • Bolt  : TR > 0.65 (Blunt, uniform flat end)
+   • Screw : TR < 0.45 (Sharp, tapering conical point)
+
+
+--------------------------------------------------------------------------------
+7. PREPROCESSING & DATA AUGMENTATION PIPELINE
+--------------------------------------------------------------------------------
+
+A. Image Preprocessing Pipeline:
+   1. Color Conversion   : BGR -> Grayscale (single channel 8-bit intensity).
+   2. Noise Reduction    : 5x5 Gaussian Kernel Blur to eliminate high-frequency noise.
+   3. Binarization       : Otsu's Global Adaptive Thresholding.
+   4. Morphological Clean: Morphological Opening (kernel 3x3) -> Closing (kernel 5x5)
+                           to fill internal pinhole voids and isolate distinct edges.
+   5. Bounding Extraction: Minimum Area Rotated Bounding Rectangle (cv2.minAreaRect).
+
+B. Augmentation Pipeline (for Machine Learning Robustness):
+   • In-Plane Rotation   : 0° to 360° continuous rotation (orientation invariance).
+   • Random Scaling      : 0.8x to 1.25x zoom (working distance invariance).
+   • Brightness Jitter   : +/- 25% illumination variation.
+   • Gaussian Noise      : Variance sigma = 0.02 added to simulate camera sensor noise.
+   • Perspective Tilt    : Simulated 0° to 25° perspective distortion.
+
+
+--------------------------------------------------------------------------------
+8. ANNOTATION SCHEMA & GROUND TRUTH FORMAT
+--------------------------------------------------------------------------------
+Every annotated dataset specimen contains structured JSON ground-truth metadata:
+
+```json
+{
+  "image_id": "IM_FID_NUT_0042.png",
+  "resolution": [1920, 1080],
+  "annotations": [
+    {
+      "category_id": 1,
+      "category_name": "NUT",
+      "sub_type": "M8_HEX_NUT",
+      "bbox_xywh": [412, 310, 240, 246],
+      "normalized_bbox": [0.214, 0.287, 0.125, 0.227],
+      "center_point": [532, 433],
+      "geometric_features": {
+        "aspect_ratio": 1.025,
+        "circularity": 0.772,
+        "solidity": 0.941,
+        "inner_hole_detected": true,
+        "inner_hole_area_ratio": 0.284,
+        "tip_ratio": null
+      },
+      "confidence_benchmark": 0.98
+    }
+  ]
+}
+```
+
+
+--------------------------------------------------------------------------------
+9. KNOWN DATASET EDGE CASES & MITIGATION STRATEGIES
+--------------------------------------------------------------------------------
+
+1. Tilted Nuts (Perspective Elliptical Projection):
+   • Issue     : When a hex nut is viewed at a steep slant angle, the circular inner 
+                 hole projects as an elongated ellipse, and outer facets resemble a shaft.
+   • Mitigation: Fitted ellipse major/minor axis estimation and multi-threshold 
+                 convexity defect analysis.
+
+2. Highly Reflective Polished Chrome Fasteners:
+   • Issue     : Specular highlights cause overexposed hot-spots inside binary masks.
+   • Mitigation: Diffused polarization LED ring light and adaptive Otsu windowing.
+
+3. Mixed Head Drives (Phillips vs Allen vs Hex Head Screws):
+   • Issue     : Different drive head profiles alter tip-to-head ratio calculations.
+   • Mitigation: Dual-ended profile scanning ensuring the sharp end is verified 
+                 irrespective of whether the head is socket, pan, or countersunk.
+
+
+--------------------------------------------------------------------------------
+10. DATASET EVALUATION BENCHMARKS & METRICS
+--------------------------------------------------------------------------------
+
+Evaluation metrics tracked across the dataset:
+• Precision (P)         : TP / (TP + FP)
+• Recall / Sensitivity  : TP / (TP + FN)
+• F1-Score              : 2 * (Precision * Recall) / (Precision + Recall)
+• Mean Inference Latency: Local Engine < 5.2 ms | Gemini Cloud AI ~ 850 ms
+• Target Accuracy Goal  : > 96.5% overall multi-class classification accuracy
+
+================================================================================
+                    END OF DATASET OVERVIEW SPECIFICATION
+================================================================================

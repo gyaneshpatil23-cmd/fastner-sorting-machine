@@ -1,12 +1,12 @@
 """
-Main Application Window for AI Fastener Inspection System.
-Integrates live camera feeds, real-time Live Detection Mode, image loading, synthetic sample generation,
-asynchronous Gemini classification, visual overlays, result statistics, and history.
+Master Industrial Engineering Workstation for AI Fastener Inspection & Sorting System.
+Redesigned with clean engineering aesthetics, customizable bin/chute architecture,
+live hardware simulation telemetry, and multi-tab operational layout.
 """
 
 import os
 import glob
-from typing import Optional
+from typing import Optional, List
 import cv2
 import numpy as np
 
@@ -15,200 +15,182 @@ from PySide6.QtGui import QPixmap, QIcon, QAction
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QSplitter, QFileDialog, QMessageBox,
-    QStatusBar, QComboBox, QMenu, QToolButton
+    QStatusBar, QComboBox, QMenu, QToolButton, QTabWidget,
+    QCheckBox
 )
 
-from config import (
+from backend.config import (
     APP_TITLE, APP_SUBTITLE, APP_VERSION, DEFAULT_MODEL,
     SAMPLE_IMAGES_DIR, SUPPORTED_IMAGE_EXTENSIONS, get_gemini_api_key,
-    MODEL_LOCAL_OFFLINE, CATEGORY_UNKNOWN
+    MODEL_LOCAL_OFFLINE
 )
-from logger import app_logger, log_session_step
-from camera import CameraThread
-from classifier import FastenerClassifierManager
-from local_classifier import LocalFastenerClassifier
-from image_utils import (
-    load_image, cv_to_qpixmap, draw_classification_overlay,
-    draw_live_scanning_hud, generate_sample_dataset
-)
-from ui.result_panel import ResultPanel
-from ui.history_panel import HistoryPanel
-from ui.settings_dialog import SettingsDialog
-from ui.styles import MAIN_STYLESHEET
+from backend.logger import app_logger, log_session_step
+from backend.camera import CameraThread, scan_available_cameras, get_preferred_camera_index
+from backend.classifier import FastenerClassifierManager
+from backend.dimensional_measurement import dimension_engine
+from backend.hardware_comm import hardware_manager
+from backend.database import db_instance
+from backend.image_utils import load_image, cv_to_qpixmap, generate_sample_dataset
+
+from frontend.result_panel import ResultPanel
+from frontend.history_panel import HistoryPanel
+from frontend.hardware_panel import HardwareControlPanel
+from frontend.specification_panel import SpecificationPanel
+from frontend.trays_panel import TraysConfigurationPanel
+from frontend.calibration_panel import CameraCalibrationPanel
+from frontend.settings_dialog import SettingsDialog
+from frontend.styles import MAIN_STYLESHEET
 
 
 class MainWindow(QMainWindow):
-    """Main desktop application window."""
+    """Main industrial inspection desktop workstation window."""
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"{APP_TITLE} - {APP_VERSION}")
-        self.setMinimumSize(1100, 750)
-        self.resize(1200, 800)
+        self.setMinimumSize(1200, 840)
+        self.resize(1280, 880)
 
         # State
-        self.current_model = DEFAULT_MODEL
+        self.current_model = MODEL_LOCAL_OFFLINE
         self.current_cv_image: Optional[np.ndarray] = None
-        self.last_analysis_result: Optional[dict] = None
-        self.overlay_enabled = True
-        self.is_live_mode = False
+        self.last_inspection_result: Optional[dict] = None
+        self.multi_fastener_mode = False
 
-        # Ensure sample dataset exists for client demo
+        # Ensure sample dataset exists
         generate_sample_dataset(str(SAMPLE_IMAGES_DIR))
 
         # Core Engines
         self.classifier_manager = FastenerClassifierManager(self)
         self.classifier_manager.inspection_completed.connect(self._on_inspection_completed)
         self.classifier_manager.counters_updated.connect(self._on_counters_updated)
-        self.local_classifier = LocalFastenerClassifier()
 
         self.camera_thread: Optional[CameraThread] = None
 
         self.init_ui()
         self.setStyleSheet(MAIN_STYLESHEET)
         self.update_ai_status_indicator()
+        self._update_bins_profile_header()
 
-        log_session_step("STARTUP", "Application initialized and UI ready.")
+        # Load and display persistent batch statistics from SQLite
+        self.result_panel.update_counters(self.classifier_manager.counters)
+
+        log_session_step("STARTUP", "Industrial Fastener Inspection Workstation initialized.")
 
     def init_ui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(16, 14, 16, 12)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(12, 10, 12, 10)
+        main_layout.setSpacing(8)
 
-        # ---------------- 1. Top Header Bar ----------------
+        # ---------------- 1. Top Industrial Telemetry Header ----------------
         header_frame = QFrame()
-        header_frame.setObjectName("headerFrame")
         header_frame.setStyleSheet(
-            "background-color: #FFFFFF; border: 1px solid #E2E8F0; "
-            "border-radius: 6px; padding: 10px 16px;"
+            "background-color: #FFFFFF; border: 1px solid #CBD5E1; "
+            "border-radius: 6px; padding: 6px 12px;"
         )
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(12)
 
+        # Title Block
         title_vbox = QVBoxLayout()
-        title_vbox.setSpacing(2)
+        title_vbox.setSpacing(1)
         title_lbl = QLabel(APP_TITLE.upper())
-        title_lbl.setStyleSheet("font-size: 17px; font-weight: 800; color: #0F172A; letter-spacing: 0.5px;")
-        subtitle_lbl = QLabel(APP_SUBTITLE)
-        subtitle_lbl.setStyleSheet("font-size: 12px; color: #64748B; font-weight: 500;")
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: 800; color: #0F172A; letter-spacing: 0.5px;")
+        subtitle_lbl = QLabel("Industrial Fastener Classification, Calibrated OpenCV Sizing & ESP32 Sorting")
+        subtitle_lbl.setStyleSheet("font-size: 10px; color: #64748B; font-weight: 600;")
         title_vbox.addWidget(title_lbl)
         title_vbox.addWidget(subtitle_lbl)
-
         header_layout.addLayout(title_vbox)
+
         header_layout.addStretch()
 
+        # Dynamic Bins Profile Pill
+        self.bins_profile_lbl = QLabel("📦 Active Bins: 4 Configured")
+        self.bins_profile_lbl.setStyleSheet(
+            "background-color: #F1F5F9; border: 1px solid #CBD5E1; color: #1E293B; "
+            "font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 4px;"
+        )
+        header_layout.addWidget(self.bins_profile_lbl)
+
+        # Camera Device Selector Dropdown
+        header_layout.addWidget(QLabel("Camera:"))
+        self.camera_combo = QComboBox()
+        self._populate_camera_devices()
+        header_layout.addWidget(self.camera_combo)
+
+        cam_refresh_btn = QPushButton("🔄")
+        cam_refresh_btn.setToolTip("Scan Video Capture Devices")
+        cam_refresh_btn.clicked.connect(self._populate_camera_devices)
+        header_layout.addWidget(cam_refresh_btn)
+
         # Settings button
-        self.settings_btn = QPushButton("⚙ System Settings")
-        self.settings_btn.setStyleSheet("font-weight: 600; padding: 8px 16px;")
+        self.settings_btn = QPushButton("⚙ Settings")
+        self.settings_btn.setStyleSheet("font-weight: 600; padding: 5px 12px;")
         self.settings_btn.clicked.connect(self._open_settings_dialog)
         header_layout.addWidget(self.settings_btn)
 
+        # Prominent Emergency Stop (E-STOP) Button
+        self.estop_btn = QPushButton("🛑 EMERGENCY STOP")
+        self.estop_btn.setStyleSheet(
+            "background-color: #DC2626; color: #FFFFFF; font-weight: 900; font-size: 12px; "
+            "padding: 6px 16px; border: 2px solid #991B1B; border-radius: 4px;"
+        )
+        self.estop_btn.clicked.connect(self._toggle_emergency_stop)
+        header_layout.addWidget(self.estop_btn)
+
         main_layout.addWidget(header_frame)
 
-        # ---------------- 2. Splitter Layout: Viewport + Dashboard ----------------
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(8)
-
-        # Left Panel (Viewport + Controls)
-        left_widget = QWidget()
-        left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(10)
-
-        # Viewport Card Frame
-        viewport_card = QFrame()
-        viewport_card.setProperty("class", "cardFrame")
-        viewport_card.setStyleSheet(
-            "background-color: #0F172A; border: 1px solid #334155; border-radius: 6px;"
+        # Emergency Warning Banner (Hidden by default)
+        self.estop_banner = QFrame()
+        self.estop_banner.setVisible(False)
+        self.estop_banner.setStyleSheet(
+            "background-color: #FEF2F2; border: 2px solid #DC2626; border-radius: 4px; padding: 6px 12px;"
         )
-        viewport_layout = QVBoxLayout(viewport_card)
-        viewport_layout.setContentsMargins(4, 4, 4, 4)
+        eb_layout = QHBoxLayout(self.estop_banner)
+        eb_layout.setContentsMargins(0, 0, 0, 0)
+        eb_lbl = QLabel("⚠️ EMERGENCY STOP ACTIVATED — All hardware motion halted. Clear obstructions before reset.")
+        eb_lbl.setStyleSheet("color: #DC2626; font-weight: 800; font-size: 12px;")
+        eb_layout.addWidget(eb_lbl)
+        eb_layout.addStretch()
+        self.reset_estop_btn = QPushButton("✅ RESET E-STOP (RECOVER)")
+        self.reset_estop_btn.setStyleSheet("background-color: #15803D; color: white; font-weight: 800; padding: 4px 12px;")
+        self.reset_estop_btn.clicked.connect(self._reset_emergency_stop)
+        eb_layout.addWidget(self.reset_estop_btn)
+        main_layout.addWidget(self.estop_banner)
 
-        self.image_viewport = QLabel("NO IMAGE LOADED\n\nOpen an image, load a sample, or switch to Live Mode.")
-        self.image_viewport.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_viewport.setStyleSheet(
-            "color: #94A3B8; font-size: 14px; font-weight: 500; background-color: #0F172A; border-radius: 4px;"
-        )
-        self.image_viewport.setMinimumSize(540, 400)
-        viewport_layout.addWidget(self.image_viewport)
-        left_layout.addWidget(viewport_card, 1)
+        # ---------------- 2. Master Multi-Tab Workstation ----------------
+        self.tabs = QTabWidget()
 
-        # Controls Row
-        controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(8)
+        # Tab 1: Vision Inspection & Dimensional Workstation
+        self.tab_inspection = self._build_inspection_tab()
+        self.tabs.addTab(self.tab_inspection, "🔬 Live Inspection Workstation")
 
-        self.open_img_btn = QPushButton("📁 Open Image")
-        self.open_img_btn.clicked.connect(self._open_image_file)
-        controls_layout.addWidget(self.open_img_btn)
+        # Tab 2: Customizable Sorting Bins & Chute Angles
+        self.tab_trays = TraysConfigurationPanel()
+        self.tab_trays.bins_configuration_changed.connect(self._update_bins_profile_header)
+        self.tabs.addTab(self.tab_trays, "📦 Custom Bins & Chute Angles")
 
-        # Sample dropdown menu button
-        self.sample_btn = QToolButton()
-        self.sample_btn.setText("⚡ Load Sample ▾")
-        self.sample_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self._build_sample_menu()
-        controls_layout.addWidget(self.sample_btn)
+        # Tab 3: Hardware & Motion Controller (ESP32)
+        self.tab_hardware = HardwareControlPanel()
+        self.tabs.addTab(self.tab_hardware, "⚙ Hardware & Sorting Chute")
 
-        # Separator line
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setStyleSheet("color: #CBD5E1;")
-        controls_layout.addWidget(sep)
+        # Tab 4: Fastener Specifications Database
+        self.tab_specs = SpecificationPanel()
+        self.tabs.addTab(self.tab_specs, "📐 ISO Specifications")
 
-        # Live Mode Toggle Button
-        self.live_mode_btn = QPushButton("⚡ Live Mode")
-        self.live_mode_btn.setObjectName("liveModeBtn")
-        self.live_mode_btn.setCheckable(True)
-        self.live_mode_btn.toggled.connect(self._toggle_live_mode)
-        controls_layout.addWidget(self.live_mode_btn)
+        # Tab 5: Camera Scale Calibration
+        self.tab_calib = CameraCalibrationPanel()
+        self.tabs.addTab(self.tab_calib, "🎯 Camera Calibration")
 
-        self.start_cam_btn = QPushButton("🎥 Start Camera")
-        self.start_cam_btn.setObjectName("cameraActionBtn")
-        self.start_cam_btn.clicked.connect(self._start_camera)
-        controls_layout.addWidget(self.start_cam_btn)
+        # Tab 6: Inspection History Audit
+        self.tab_history = HistoryPanel()
+        self.tab_history.clear_history_requested.connect(self.classifier_manager.clear_history)
+        self.tabs.addTab(self.tab_history, "📋 Quality Audit History")
 
-        self.capture_btn = QPushButton("📸 Capture Frame")
-        self.capture_btn.setEnabled(False)
-        self.capture_btn.clicked.connect(self._capture_camera_frame)
-        controls_layout.addWidget(self.capture_btn)
-
-        self.stop_cam_btn = QPushButton("⏹ Stop Camera")
-        self.stop_cam_btn.setEnabled(False)
-        self.stop_cam_btn.clicked.connect(self._stop_camera)
-        controls_layout.addWidget(self.stop_cam_btn)
-
-        left_layout.addLayout(controls_layout)
-
-        # Prominent Analyze Button
-        self.analyze_btn = QPushButton("🔍  ANALYZE FASTENER")
-        self.analyze_btn.setObjectName("primaryActionBtn")
-        self.analyze_btn.setMinimumHeight(44)
-        self.analyze_btn.clicked.connect(self._analyze_current_image)
-        left_layout.addWidget(self.analyze_btn)
-
-        splitter.addWidget(left_widget)
-
-        # Right Panel (Results, Counters & History)
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(10)
-
-        self.result_panel = ResultPanel()
-        self.result_panel.reset_counters_requested.connect(self.classifier_manager.reset_counters)
-        right_layout.addWidget(self.result_panel)
-
-        self.history_panel = HistoryPanel()
-        self.history_panel.clear_history_requested.connect(self.classifier_manager.clear_history)
-        right_layout.addWidget(self.history_panel, 1)
-
-        splitter.addWidget(right_widget)
-
-        # Splitter ratio: 60% Left, 40% Right
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
-        main_layout.addWidget(splitter, 1)
+        main_layout.addWidget(self.tabs, 1)
 
         # ---------------- 3. Status Bar ----------------
         self.status_bar = QStatusBar()
@@ -216,182 +198,244 @@ class MainWindow(QMainWindow):
 
         self.cam_status_lbl = QLabel("Camera: ● Off")
         self.cam_status_lbl.setStyleSheet("color: #64748B; margin-right: 16px;")
-        
-        self.ai_status_lbl = QLabel("AI: ● Checking...")
-        self.ai_status_lbl.setStyleSheet("color: #64748B; margin-right: 16px;")
-        
+
+        self.hw_status_lbl = QLabel("ESP32: ● Simulator Ready")
+        self.hw_status_lbl.setStyleSheet("color: #15803D; font-weight: 600; margin-right: 16px;")
+
+        self.ai_status_lbl = QLabel("AI: ● Local Offline Vision Engine")
+        self.ai_status_lbl.setStyleSheet("color: #1D4ED8; font-weight: 600; margin-right: 16px;")
+
         self.sys_status_lbl = QLabel("System: ● Ready")
         self.sys_status_lbl.setStyleSheet("color: #15803D; font-weight: 600;")
 
         self.status_bar.addWidget(self.cam_status_lbl)
+        self.status_bar.addWidget(self.hw_status_lbl)
         self.status_bar.addWidget(self.ai_status_lbl)
         self.status_bar.addPermanentWidget(self.sys_status_lbl)
 
+    def _build_inspection_tab(self) -> QWidget:
+        """Constructs Tab 1: Clean workstation with viewport, action toolbar, and dimensional card."""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(10)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # Left Column (Inspection Viewport + Toolbar)
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
+
+        # Viewport Card (Solid Dark Matte Bezel)
+        viewport_card = QFrame()
+        viewport_card.setStyleSheet("background-color: #0B1120; border: 1px solid #334155; border-radius: 6px;")
+        vp_layout = QVBoxLayout(viewport_card)
+        vp_layout.setContentsMargins(4, 4, 4, 4)
+
+        self.image_viewport = QLabel("NO IMAGE LOADED\n\nOpen an image file, load a fastener sample, or start camera capture.")
+        self.image_viewport.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_viewport.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: 500;")
+        self.image_viewport.setMinimumSize(540, 420)
+        vp_layout.addWidget(self.image_viewport)
+        left_layout.addWidget(viewport_card, 1)
+
+        # Action Toolbar Row
+        ctrl_bar = QHBoxLayout()
+        ctrl_bar.setSpacing(6)
+
+        self.open_img_btn = QPushButton("📁 Open File")
+        self.open_img_btn.clicked.connect(self._open_image_file)
+        ctrl_bar.addWidget(self.open_img_btn)
+
+        self.sample_btn = QToolButton()
+        self.sample_btn.setText("⚡ Load Sample ▾")
+        self.sample_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._build_sample_menu()
+        ctrl_bar.addWidget(self.sample_btn)
+
+        self.start_cam_btn = QPushButton("🎥 Live Video")
+        self.start_cam_btn.setObjectName("cameraActionBtn")
+        self.start_cam_btn.clicked.connect(self._start_camera)
+        ctrl_bar.addWidget(self.start_cam_btn)
+
+        self.capture_btn = QPushButton("📸 Freeze / Capture")
+        self.capture_btn.setEnabled(False)
+        self.capture_btn.clicked.connect(self._capture_camera_frame)
+        ctrl_bar.addWidget(self.capture_btn)
+
+        self.stop_cam_btn = QPushButton("⏹ Stop")
+        self.stop_cam_btn.setEnabled(False)
+        self.stop_cam_btn.clicked.connect(self._stop_camera)
+        ctrl_bar.addWidget(self.stop_cam_btn)
+
+        left_layout.addLayout(ctrl_bar)
+
+        # Options Row
+        opt_bar = QHBoxLayout()
+        self.auto_sort_cb = QCheckBox("Auto Physical Sort Cycle (Tilt Pad -> Conveyor -> Chute)")
+        self.auto_sort_cb.setChecked(True)
+        self.auto_sort_cb.setStyleSheet("font-weight: 600; color: #334155; font-size: 11px;")
+
+        self.multi_obj_cb = QCheckBox("Multi-Fastener Area Scan")
+        self.multi_obj_cb.stateChanged.connect(self._on_multi_mode_changed)
+        self.multi_obj_cb.setStyleSheet("font-weight: 600; color: #334155; font-size: 11px;")
+
+        opt_bar.addWidget(self.auto_sort_cb)
+        opt_bar.addStretch()
+        opt_bar.addWidget(self.multi_obj_cb)
+        left_layout.addLayout(opt_bar)
+
+        # Prominent Primary Action Button
+        self.analyze_btn = QPushButton("🔬  INSPECT, MEASURE & SORT FASTENER")
+        self.analyze_btn.setObjectName("primaryActionBtn")
+        self.analyze_btn.setMinimumHeight(42)
+        self.analyze_btn.clicked.connect(self._analyze_current_image)
+        left_layout.addWidget(self.analyze_btn)
+
+        splitter.addWidget(left_widget)
+
+        # Right Column (Dimensional Result & Machine Routing Card)
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(8)
+
+        self.result_panel = ResultPanel()
+        self.result_panel.reset_counters_requested.connect(self.classifier_manager.reset_counters)
+        right_layout.addWidget(self.result_panel)
+        right_layout.addStretch()
+
+        splitter.addWidget(right_widget)
+
+        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(1, 2)
+        layout.addWidget(splitter)
+
+        return widget
+
+    def _update_bins_profile_header(self):
+        """Updates top header pill with current active bin count and span."""
+        trays = db_instance.get_trays(enabled_only=True)
+        if not trays:
+            trays = db_instance.get_trays()[:4]
+        min_a = min([t["servo_angle"] for t in trays]) if trays else 0
+        max_a = max([t["servo_angle"] for t in trays]) if trays else 180
+        self.bins_profile_lbl.setText(f"📦 Active Bins: {len(trays)} Configured ({min_a}° - {max_a}°)")
+
+    def _populate_camera_devices(self):
+        self.camera_combo.clear()
+        cams = scan_available_cameras()
+        preferred_idx = get_preferred_camera_index()
+        select_idx = 0
+
+        for i, c in enumerate(cams):
+            self.camera_combo.addItem(c["name"], c["index"])
+            if c["index"] == preferred_idx:
+                select_idx = i
+
+        self.camera_combo.setCurrentIndex(select_idx)
+
     def _build_sample_menu(self):
-        """Constructs sample images dropdown menu."""
         menu = QMenu(self)
         samples = [
-            ("Hex Nut Sample", "sample_01_hex_nut.png"),
-            ("Hex Bolt Sample", "sample_02_hex_bolt.png"),
-            ("Wood Screw Sample", "sample_03_wood_screw.png"),
-            ("Flat Washer Sample", "sample_04_flat_washer.png"),
+            ("Hex Bolt Sample (M8 x 40)", "sample_02_hex_bolt.png"),
+            ("Hex Nut Sample (M8 Nut)", "sample_01_hex_nut.png"),
+            ("Wood Screw Sample (M4 x 20)", "sample_03_wood_screw.png"),
+            ("Flat Washer Sample (M8 Washer)", "sample_04_flat_washer.png"),
         ]
-        
         for name, filename in samples:
             filepath = SAMPLE_IMAGES_DIR / filename
             action = QAction(name, self)
-            action.triggered.connect(lambda checked=False, p=str(filepath): self._load_image_from_path(p))
+            action.triggered.connect(lambda ch=False, p=str(filepath): self._load_image_from_path(p))
             menu.addAction(action)
 
-        # Scan for any additional custom user images in sample_images/
         custom_files = []
         for ext in SUPPORTED_IMAGE_EXTENSIONS:
             custom_files.extend(glob.glob(str(SAMPLE_IMAGES_DIR / f"*{ext}")))
-        
         sample_basenames = [s[1] for s in samples]
         extras = [f for f in custom_files if os.path.basename(f) not in sample_basenames]
         if extras:
             menu.addSeparator()
             for ext_file in extras:
                 action = QAction(f"Custom: {os.path.basename(ext_file)}", self)
-                action.triggered.connect(lambda checked=False, p=ext_file: self._load_image_from_path(p))
+                action.triggered.connect(lambda ch=False, p=ext_file: self._load_image_from_path(p))
                 menu.addAction(action)
 
         self.sample_btn.setMenu(menu)
 
     def _open_image_file(self):
-        """Opens file dialog for user to select an image from disk."""
         ext_filter = "Images (*.jpg *.jpeg *.png *.bmp *.webp);;All Files (*.*)"
         filepath, _ = QFileDialog.getOpenFileName(self, "Select Fastener Image", "", ext_filter)
         if filepath:
             self._load_image_from_path(filepath)
 
     def _load_image_from_path(self, filepath: str):
-        """Loads and displays image from file path."""
-        # Stop live camera if running
-        if self.is_live_mode:
-            self.live_mode_btn.setChecked(False)
         self._stop_camera()
-
         img = load_image(filepath)
         if img is None:
             QMessageBox.warning(self, "Image Error", f"Could not load image:\n{filepath}")
             return
 
         self.current_cv_image = img
-        self.last_analysis_result = None
+        self.last_inspection_result = None
         self._display_cv_image(self.current_cv_image)
         self.sys_status_lbl.setText(f"System: ● Loaded {os.path.basename(filepath)}")
         log_session_step("IMAGE", f"Loaded image file: {os.path.basename(filepath)}")
 
-    def _toggle_live_mode(self, enabled: bool):
-        """Toggles real-time continuous fastener classification mode."""
-        self.is_live_mode = enabled
-        if enabled:
-            self.live_mode_btn.setText("⚡ Live Mode: ON")
-            self.sys_status_lbl.setText("System: ● Live AI Detection Active")
-            self.sys_status_lbl.setStyleSheet("color: #059669; font-weight: 600;")
-            log_session_step("LIVE_MODE", "Live fastener AI detection mode started.")
-            # Automatically start camera if not already streaming
-            if not self.camera_thread or not self.camera_thread.is_streaming():
-                self._start_camera()
-        else:
-            self.live_mode_btn.setText("⚡ Live Mode")
-            self.sys_status_lbl.setText("System: ● Live Mode Paused")
-            self.sys_status_lbl.setStyleSheet("color: #64748B; font-weight: 600;")
-            log_session_step("LIVE_MODE", "Live fastener AI detection mode stopped.")
-
     def _start_camera(self):
-        """Initializes and starts background camera capture thread."""
         if self.camera_thread and self.camera_thread.is_streaming():
             return
 
-        self.camera_thread = CameraThread(camera_index=0, parent=self)
+        cam_idx = self.camera_combo.currentData() or 0
+        self.camera_thread = CameraThread(camera_index=cam_idx, parent=self)
         self.camera_thread.frame_received.connect(self._on_camera_frame)
         self.camera_thread.camera_started.connect(self._on_camera_started)
         self.camera_thread.camera_stopped.connect(self._on_camera_stopped)
         self.camera_thread.error_occurred.connect(self._on_camera_error)
         self.camera_thread.start()
 
-    def _on_camera_started(self):
+    def _on_camera_started(self, active_index: int):
         self.start_cam_btn.setEnabled(False)
         self.capture_btn.setEnabled(True)
         self.stop_cam_btn.setEnabled(True)
-        self.cam_status_lbl.setText("Camera: ● Streaming Live")
+        self.cam_status_lbl.setText(f"Camera #{active_index}: ● Streaming Live")
         self.cam_status_lbl.setStyleSheet("color: #059669; font-weight: 600; margin-right: 16px;")
-        self.sys_status_lbl.setText("System: ● Camera active")
-        log_session_step("CAMERA", "Camera stream started.")
+        self.sys_status_lbl.setText(f"System: ● Camera #{active_index} active")
 
     def _on_camera_stopped(self):
         self.start_cam_btn.setEnabled(True)
         self.capture_btn.setEnabled(False)
         self.stop_cam_btn.setEnabled(False)
-        if self.is_live_mode:
-            self.live_mode_btn.setChecked(False)
         self.cam_status_lbl.setText("Camera: ● Off")
         self.cam_status_lbl.setStyleSheet("color: #64748B; margin-right: 16px;")
-        log_session_step("CAMERA", "Camera stream stopped.")
 
     def _on_camera_error(self, err_msg: str):
         self._stop_camera()
-        QMessageBox.warning(self, "Camera Warning", f"{err_msg}\n\nYou can still use 'Open Image' or 'Load Sample'.")
-        log_session_step("CAMERA_ERROR", err_msg)
+        QMessageBox.warning(self, "Camera Warning", f"{err_msg}\n\nYou can still use 'Open File' or 'Load Sample'.")
 
     def _on_camera_frame(self, frame: np.ndarray):
-        """Handles live camera frame. Performs real-time inference when in Live Mode."""
         self.current_cv_image = frame
-
-        if self.is_live_mode:
-            # Real-time local offline vision classification
-            res = self.local_classifier.classify(frame)
-            cat = res.get("category", CATEGORY_UNKNOWN)
-            conf = float(res.get("confidence", 0.0))
-            roi = res.get("roi")
-
-            if res.get("success", False) and cat != CATEGORY_UNKNOWN and conf >= 0.65:
-                # Fastener localized and classified in live stream
-                annotated = draw_classification_overlay(frame, cat, conf, roi=roi)
-                self._display_cv_image(annotated)
-                self.result_panel.display_result(res)
-                self.last_analysis_result = res
-                self.sys_status_lbl.setText(f"System: ● Live Detected: {cat} ({int(conf*100)}%)")
-                self.sys_status_lbl.setStyleSheet("color: #059669; font-weight: 600;")
-            else:
-                # No fastener in view - show live scanning HUD
-                annotated = draw_live_scanning_hud(frame)
-                self._display_cv_image(annotated)
-                self.result_panel.set_live_scanning_state()
-                self.sys_status_lbl.setText("System: ● Live AI Scanning for Fasteners...")
-                self.sys_status_lbl.setStyleSheet("color: #059669; font-weight: 600;")
-        else:
-            self._display_cv_image(frame)
+        self._display_cv_image(frame)
 
     def _capture_camera_frame(self):
-        """Freezes current camera frame for classification."""
         if self.camera_thread and self.camera_thread.is_streaming():
             frame = self.camera_thread.get_latest_frame()
-            if self.is_live_mode:
-                self.live_mode_btn.setChecked(False)
             self._stop_camera()
             if frame is not None:
                 self.current_cv_image = frame
                 self._display_cv_image(self.current_cv_image)
                 self.sys_status_lbl.setText("System: ● Frame captured")
-                log_session_step("CAMERA", "Captured frame from live camera.")
 
     def _stop_camera(self):
-        """Safely stops active camera thread."""
-        if self.is_live_mode:
-            self.live_mode_btn.setChecked(False)
         if self.camera_thread and self.camera_thread.is_streaming():
             self.camera_thread.stop()
             self.camera_thread = None
 
     def _display_cv_image(self, cv_img: np.ndarray):
-        """Scales and sets OpenCV image onto image viewport QLabel maintaining aspect ratio."""
         if cv_img is None or cv_img.size == 0:
             return
-
         pixmap = cv_to_qpixmap(cv_img)
         scaled_pixmap = pixmap.scaled(
             self.image_viewport.size(),
@@ -401,110 +445,138 @@ class MainWindow(QMainWindow):
         self.image_viewport.setPixmap(scaled_pixmap)
 
     def resizeEvent(self, event):
-        """Rescales image when window is resized."""
         super().resizeEvent(event)
-        if self.current_cv_image is not None and not (self.camera_thread and self.camera_thread.is_streaming()):
-            # If we have an annotated overlay result, show annotated, else raw
-            if self.last_analysis_result and self.overlay_enabled:
-                cat = self.last_analysis_result.get("category", "UNKNOWN")
-                conf = self.last_analysis_result.get("confidence", 0.0)
-                roi = self.last_analysis_result.get("roi")
-                annotated = draw_classification_overlay(self.current_cv_image, cat, conf, roi=roi)
+        if self.current_cv_image is not None:
+            if self.last_inspection_result:
+                meas = self.last_inspection_result.get("measurements", {})
+                dec = self.last_inspection_result.get("decision", "ACCEPT")
+                tray = self.last_inspection_result.get("assigned_tray", 1)
+                annotated = dimension_engine.draw_calibrated_overlay(
+                    self.current_cv_image, meas, decision=dec, target_tray=tray
+                )
                 self._display_cv_image(annotated)
             else:
                 self._display_cv_image(self.current_cv_image)
 
+    def _on_multi_mode_changed(self, state):
+        self.multi_fastener_mode = (state == Qt.CheckState.Checked.value or state == 2)
+        log_session_step("CONFIG", f"Multi-fastener inspection mode: {self.multi_fastener_mode}")
+
     def _analyze_current_image(self):
-        """Triggers AI vision classification on currently displayed frame."""
         if self.current_cv_image is None or self.current_cv_image.size == 0:
-            QMessageBox.information(
-                self,
-                "No Image",
-                "Please select an image first using 'Open Image', 'Load Sample', or capture a frame from the camera."
-            )
+            QMessageBox.information(self, "No Image", "Please load an image or start camera capture first.")
             return
 
-        # Determine active engine
-        api_key = get_gemini_api_key()
-        using_local = (self.current_model == MODEL_LOCAL_OFFLINE) or (not api_key)
-        engine_name = "Local Offline Vision Engine" if using_local else f"Gemini Cloud ({self.current_model})"
+        if self.multi_fastener_mode:
+            self._process_multi_fasteners()
+            return
 
-        # Disable analyze button & indicate progress
         self.analyze_btn.setEnabled(False)
-        self.analyze_btn.setText("⏳ ANALYZING...")
+        self.analyze_btn.setText("⏳ INSPECTING & MEASURING...")
         self.result_panel.set_analyzing_state()
-        self.sys_status_lbl.setText(f"System: ● Analyzing via {engine_name}...")
-        self.sys_status_lbl.setStyleSheet("color: #2563EB; font-weight: 600;")
+        self.sys_status_lbl.setText("System: ● Measuring dimensions & verifying tolerances...")
 
-        log_session_step("INFERENCE", f"Analyzing fastener image via {engine_name}...")
-
-        # Spawn asynchronous classification worker
-        worker = self.classifier_manager.start_classification(self.current_cv_image, self.current_model)
+        auto_sort = self.auto_sort_cb.isChecked()
+        worker = self.classifier_manager.start_classification(
+            self.current_cv_image,
+            self.current_model,
+            auto_sort=auto_sort
+        )
         if worker:
-            worker.error.connect(self._on_classification_error)
+            worker.error.connect(self._on_inspection_error)
+
+    def _process_multi_fasteners(self):
+        objects = dimension_engine.detect_multiple_fasteners(self.current_cv_image)
+        if not objects:
+            QMessageBox.information(self, "Multi Inspection", "No distinct fastener objects found in inspection area.")
+            return
+
+        annotated = self.current_cv_image.copy()
+        for idx, obj in enumerate(objects):
+            meas = dimension_engine.measure_fastener(self.current_cv_image, "BOLT", roi_bbox=obj["roi_bbox"])
+            annotated = dimension_engine.draw_calibrated_overlay(annotated, meas, decision="ACCEPT", target_tray=(idx % 4) + 1)
+
+        self._display_cv_image(annotated)
+        self.sys_status_lbl.setText(f"System: ● Multi-inspection complete ({len(objects)} fasteners identified)")
+        QMessageBox.information(
+            self,
+            "Multi-Fastener Inspection Complete",
+            f"Successfully segmented and measured {len(objects)} fasteners simultaneously on the inspection pad."
+        )
 
     def _on_inspection_completed(self, result: dict):
-        """Handles finished AI classification result."""
         self.analyze_btn.setEnabled(True)
-        self.analyze_btn.setText("🔍  ANALYZE FASTENER")
-        self.sys_status_lbl.setText("System: ● Inspection Complete")
-        self.sys_status_lbl.setStyleSheet("color: #15803D; font-weight: 600;")
+        self.analyze_btn.setText("🔬  INSPECT, MEASURE & SORT FASTENER")
+        self.sys_status_lbl.setText(f"System: ● Inspection Complete ({result.get('decision')})")
 
-        self.last_analysis_result = result
+        self.last_inspection_result = result
         self.result_panel.display_result(result)
-        self.history_panel.add_inspection_entry(result)
+        self.tab_history.add_inspection_entry(result)
+        self.tab_trays.load_trays()
 
-        # Draw visual overlay on image viewport
-        category = result.get("category", "UNKNOWN")
-        confidence = float(result.get("confidence", 0.0))
-        roi = result.get("roi")
-        if self.current_cv_image is not None and self.overlay_enabled:
-            annotated = draw_classification_overlay(self.current_cv_image, category, confidence, roi=roi)
-            self._display_cv_image(annotated)
+        meas = result.get("measurements", {})
+        dec = result.get("decision", "ACCEPT")
+        tray = result.get("assigned_tray", 1)
+        annotated = dimension_engine.draw_calibrated_overlay(
+            self.current_cv_image, meas, decision=dec, target_tray=tray
+        )
+        self._display_cv_image(annotated)
 
-        # If analysis failed or returned unexpected category warning
-        if not result.get("success", True):
-            QMessageBox.warning(self, "AI Notice", result.get("reason", "Classification returned an alert."))
-
-    def _on_classification_error(self, error_msg: str):
-        """Handles worker thread errors."""
+    def _on_inspection_error(self, error_msg: str):
         self.analyze_btn.setEnabled(True)
-        self.analyze_btn.setText("🔍  ANALYZE FASTENER")
-        self.sys_status_lbl.setText("System: ● Analysis Failed")
-        self.sys_status_lbl.setStyleSheet("color: #B91C1C; font-weight: 600;")
-        QMessageBox.critical(self, "Analysis Failed", f"Classification error:\n{error_msg}")
+        self.analyze_btn.setText("🔬  INSPECT, MEASURE & SORT FASTENER")
+        self.sys_status_lbl.setText("System: ● Inspection Failed")
+        QMessageBox.critical(self, "Inspection Error", f"Error:\n{error_msg}")
 
     def _on_counters_updated(self, counters: dict):
-        """Updates category counter values in results panel."""
         self.result_panel.update_counters(counters)
 
     def _open_settings_dialog(self):
-        """Opens settings modal dialog."""
         dlg = SettingsDialog(current_model=self.current_model, parent=self)
         dlg.settings_saved.connect(self._on_settings_applied)
         dlg.exec()
 
     def _on_settings_applied(self, new_model: str):
-        """Updates runtime model and refresh AI status indicator."""
         self.current_model = new_model
         self.update_ai_status_indicator()
-        log_session_step("SETTINGS", f"Active model updated to: {self.current_model}")
 
     def update_ai_status_indicator(self):
-        """Checks API key existence and updates bottom status bar."""
         key = get_gemini_api_key()
         if self.current_model == MODEL_LOCAL_OFFLINE:
             self.ai_status_lbl.setText("AI: ● Local Offline Vision Engine (Zero-Config)")
-            self.ai_status_lbl.setStyleSheet("color: #2563EB; font-weight: 600; margin-right: 16px;")
+            self.ai_status_lbl.setStyleSheet("color: #1D4ED8; font-weight: 600; margin-right: 16px;")
         elif key:
-            self.ai_status_lbl.setText(f"AI: ● Cloud Connected ({self.current_model})")
+            self.ai_status_lbl.setText(f"AI: ● Cloud Vision ({self.current_model})")
             self.ai_status_lbl.setStyleSheet("color: #15803D; font-weight: 600; margin-right: 16px;")
         else:
             self.ai_status_lbl.setText("AI: ● Local Offline Mode (API Key Optional)")
-            self.ai_status_lbl.setStyleSheet("color: #2563EB; font-weight: 600; margin-right: 16px;")
+            self.ai_status_lbl.setStyleSheet("color: #1D4ED8; font-weight: 600; margin-right: 16px;")
+
+    def _toggle_emergency_stop(self):
+        """Triggers emergency stop kill switch."""
+        self._stop_camera()
+        hardware_manager.emergency_stop()
+        self.estop_banner.setVisible(True)
+        self.sys_status_lbl.setText("System: 🛑 EMERGENCY STOP ACTIVE")
+        self.sys_status_lbl.setStyleSheet("color: #DC2626; font-weight: 900;")
+        self.analyze_btn.setEnabled(False)
+        QMessageBox.critical(
+            self,
+            "EMERGENCY STOP ACTIVATED",
+            "Emergency Stop Triggered!\n\nAll conveyor stepper and servo motion has been killed.\nEnsure physical mechanism is clear before clicking 'RESET E-STOP'."
+        )
+
+    def _reset_emergency_stop(self):
+        """Recovers from emergency stop state."""
+        hardware_manager.reset_estop()
+        self.estop_banner.setVisible(False)
+        self.sys_status_lbl.setText("System: ● Ready (E-Stop Cleared)")
+        self.sys_status_lbl.setStyleSheet("color: #15803D; font-weight: 600;")
+        self.analyze_btn.setEnabled(True)
+        QMessageBox.information(self, "E-STOP Cleared", "Hardware motion re-enabled. System returned to READY state.")
 
     def closeEvent(self, event):
-        """Ensures camera thread and background workers are safely released on window close."""
         self._stop_camera()
+        hardware_manager.disconnect_hardware()
         log_session_step("SHUTDOWN", "Application closed cleanly.")
         event.accept()

@@ -8,9 +8,9 @@ import traceback
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
-from config import APP_TITLE
-from logger import app_logger, log_session_step
-from ui.main_window import MainWindow
+from backend.config import APP_TITLE
+from backend.logger import app_logger, log_session_step
+from frontend.main_window import MainWindow
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     """Global exception handler to capture unhandled exceptions in logs."""

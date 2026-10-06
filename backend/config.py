@@ -9,7 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Base Paths
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = BASE_DIR / "logs"
 SAMPLE_IMAGES_DIR = BASE_DIR / "sample_images"
 ENV_FILE = BASE_DIR / ".env"
