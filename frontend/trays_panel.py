@@ -13,7 +13,9 @@ from PySide6.QtWidgets import (
     QProgressBar, QMessageBox
 )
 
-from backend.database import db_instance
+import re
+
+from backend.database import db_instance, default_tray_label
 from backend.hardware_comm import hardware_manager
 from backend.logger import log_session_step
 
@@ -242,6 +244,11 @@ class TraysConfigurationPanel(QWidget):
 
             size_widget = self.table.cellWidget(r, 3)
             size_name = size_widget.currentText() if size_widget else "Any Size"
+
+            # Auto-generated labels follow the assignment; labels the operator typed are kept as they are
+            if name_item and re.fullmatch(r"(Bin|Tray) \d+( \(.*\))?", tray_name):
+                tray_name = default_tray_label(tray_id, category, size_name)
+                name_item.setText(tray_name)
 
             angle_widget = self.table.cellWidget(r, 4)
             angle = angle_widget.value() if angle_widget else 45

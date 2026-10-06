@@ -64,24 +64,16 @@ class FastenerVerificationEngine:
         # Primary matching dimension
         target_dim = stem_dia if category in [CATEGORY_BOLT, CATEGORY_SCREW] else inner_dia
 
-        # Find best matching specification based on nominal diameter & length
-        best_spec = None
-        min_dim_error = float("inf")
-
-        for spec in specs:
-            spec_nom_dia = spec["nominal_diameter"]
-            dia_diff = abs(target_dim - spec_nom_dia)
-
-            # For bolts/screws, also consider length difference
+        # Match the thread size (diameter) first, then the closest length within that size.
+        # Mixing the two lets a length coincidence pick the wrong thread size (an M4 x 35 read as M6 x 30).
+        def match_error(spec: Dict[str, Any]) -> Tuple[float, float]:
+            dia_diff = round(abs(target_dim - spec["nominal_diameter"]), 3)
+            len_diff = 0.0
             if category in [CATEGORY_BOLT, CATEGORY_SCREW] and spec.get("nominal_length"):
                 len_diff = abs(length - spec["nominal_length"])
-                total_error = dia_diff * 2.0 + len_diff
-            else:
-                total_error = dia_diff
+            return dia_diff, len_diff
 
-            if total_error < min_dim_error:
-                min_dim_error = total_error
-                best_spec = spec
+        best_spec = min(specs, key=match_error, default=None)
 
         if not best_spec:
             return self._create_reject_decision(
@@ -165,6 +157,12 @@ class FastenerVerificationEngine:
         else:
             decision = "REJECT"
             reason = f"Dimensional Mismatch for {matched_size_name}: {'; '.join(tolerance_errors)}. {self._describe_reject_route(target_tray)}"
+            # Right thread size but an unlisted length is usually a missing specification, not a bad part
+            if category in [CATEGORY_BOLT, CATEGORY_SCREW] and best_spec["min_diameter"] <= stem_dia <= best_spec["max_diameter"]:
+                reason += (
+                    f" The diameter fits, but no {category.lower()} of this diameter with a length near {length:.0f} mm is configured"
+                    " - add that size on the ISO Specifications tab if it is a valid part."
+                )
 
         log_session_step("DECISION", f"{decision}: {matched_size_name} -> Tray {target_tray} ({target_angle}°)")
 

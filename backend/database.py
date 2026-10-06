@@ -18,6 +18,15 @@ DB_PATH = os.getenv("FASTENER_DB_PATH") or (BASE_DIR / "fastener_inspection.db")
 # Size labels that mean "this bin is not tied to one specific size"
 GENERIC_SIZE_LABELS = ("Any Size", "Out of Spec", "Custom", "Configurable")
 
+def default_tray_label(tray_id: int, category: str, size: str) -> str:
+    """Builds the standard bin label, which describes what the bin is assigned to."""
+    if category == "REJECT":
+        return f"Bin {tray_id} (Reject / Out of Spec)"
+    if size in GENERIC_SIZE_LABELS or not size:
+        return f"Bin {tray_id} ({category.title()})"
+    return f"Bin {tray_id} ({size})"
+
+
 class FastenerDatabase:
     """Thread-safe SQLite database manager for the inspection system."""
 
@@ -357,7 +366,7 @@ class FastenerDatabase:
         count = max(2, min(16, count))
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            
+
             # Disable all currently
             cursor.execute("UPDATE trays SET enabled = 0")
 
@@ -399,12 +408,7 @@ class FastenerDatabase:
                     category, size = preset_cat, preset_size
 
                 # The label always describes what the bin is actually assigned to
-                if category == "REJECT":
-                    tray_name = f"Bin {idx} (Reject / Out of Spec)"
-                elif size in GENERIC_SIZE_LABELS or not size:
-                    tray_name = f"Bin {idx} ({category.title()})"
-                else:
-                    tray_name = f"Bin {idx} ({size})"
+                tray_name = default_tray_label(idx, category, size)
 
                 if existing:
                     cursor.execute("""
