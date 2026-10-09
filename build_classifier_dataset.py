@@ -16,6 +16,7 @@ MAIN PARTS
       "nothing here" instead of always naming a fastener
     - Your own photos: everything saved with the app's "Save Photo for Training" button
       (my_camera_photos/<CLASS>/) is added, so the model learns your camera, parts and lighting
+    - Extra photos: ready-made pictures of single parts in extra_training_photos/<CLASS>/ are added whole
 """
 
 import argparse
@@ -30,11 +31,18 @@ BASE_DIR = Path(__file__).resolve().parent
 SOURCE_DIR = BASE_DIR / "FASTENER SORTER.v3i.yolov11"
 OUTPUT_DIR = BASE_DIR / "fastener_sorter_cls"
 CAMERA_PHOTOS_DIR = BASE_DIR / "my_camera_photos"
+# Ready-made photos of single parts, one folder per class, where the part already fills the picture
+# (for example clean catalogue pictures). They are added whole.
+EXTRA_PHOTOS_DIR = BASE_DIR / "extra_training_photos"
 
 SOURCE_NAMES = ["bolt", "nut", "nuts", "rivet", "screw", "washer"]  # order used by the label files
 MERGE = {"nuts": "nut"}                                              # duplicate label in the download
 SPLITS = {"train": "train", "valid": "val", "test": "test"}
 NO_FASTENER = "NO_FASTENER"
+# Classes in the download to leave out of training. Leaving rivets out was tried (2026-10-09): clean
+# silver bolts were no longer called rivets, but silver screws and nuts were then named wrongly more
+# often, so rivets stay in. The app shows a rivet as "not recognised", which sends it to the reject bin.
+EXCLUDED_CLASSES = set()
 
 # How much of the surroundings each crop keeps, as a fraction of the part's size on every side
 PADDINGS = {"tight": 0.08, "medium": 0.60, "wide": 1.50}
@@ -119,11 +127,11 @@ def plain_frame(rng: random.Random, np_rng: np.random.Generator) -> np.ndarray:
 # YOUR OWN CAMERA PHOTOS
 # Each photo is used whole and as the centre guide box (where the part is held during live video).
 # ============================================================================
-def add_camera_photos(out: Path, counts: dict) -> int:
+def add_photo_folder(source: Path, prefix: str, with_guide_crop: bool, out: Path, counts: dict) -> int:
     added = 0
-    if not CAMERA_PHOTOS_DIR.exists():
+    if not source.exists():
         return added
-    for class_dir in sorted(p for p in CAMERA_PHOTOS_DIR.iterdir() if p.is_dir()):
+    for class_dir in sorted(p for p in source.iterdir() if p.is_dir()):
         label = class_dir.name.upper()
         for index, photo in enumerate(sorted(class_dir.glob("*.jpg"))):
             image = cv2.imdecode(np.fromfile(str(photo), dtype=np.uint8), cv2.IMREAD_COLOR)
@@ -136,8 +144,11 @@ def add_camera_photos(out: Path, counts: dict) -> int:
             h, w = image.shape[:2]
             box_w, box_h = int(w * 0.45), int(h * 0.50)  # same box the app draws on live video
             x, y = w // 2 - box_w // 2, h // 2 - box_h // 2
-            for view, picture in (("whole", image), ("guide", image[y:y + box_h, x:x + box_w])):
-                if save(picture, out / split / label, f"mycam_{photo.stem}_{view}.jpg"):
+            views = [("whole", image)]
+            if with_guide_crop:
+                views.append(("guide", image[y:y + box_h, x:x + box_w]))
+            for view, picture in views:
+                if save(picture, out / split / label, f"{prefix}_{photo.stem}_{view}.jpg"):
                     counts[(split, label)] = counts.get((split, label), 0) + 1
             added += 1
     return added
@@ -170,13 +181,14 @@ def main():
             image = cv2.imread(str(image_file))
             stem = image_file.stem[:40]
 
-            for i, box in enumerate(boxes):
+            wanted = [box for box in boxes if box[0] not in EXCLUDED_CLASSES]
+            for i, box in enumerate(wanted):
                 for view, padding in PADDINGS.items():
                     if save(crop_part(image, box, padding), out / split_out / box[0], f"{stem}_{i:02d}_{view}.jpg"):
                         counts[(split_out, box[0])] = counts.get((split_out, box[0]), 0) + 1
 
             kinds = {box[0] for box in boxes}
-            if len(kinds) == 1:
+            if len(kinds) == 1 and not kinds & EXCLUDED_CLASSES:
                 kind = kinds.pop()
                 save(image, out / split_out / kind, f"{stem}_whole.jpg")
                 counts[(split_out, kind)] = counts.get((split_out, kind), 0) + 1
@@ -190,8 +202,18 @@ def main():
             save(plain_frame(rng, np_rng), out / split_out / NO_FASTENER, f"plain_{k:03d}.jpg")
             counts[(split_out, NO_FASTENER)] = counts.get((split_out, NO_FASTENER), 0) + 1
 
-    own = add_camera_photos(out, counts)
-    print(f"Photos from my_camera_photos/ added: {own}\n")
+    # A class folder left empty (for example from an earlier build) would still count as a class when training
+    for folder in sorted(out.glob("*/*")):
+        if folder.is_dir() and not any(folder.iterdir()):
+            try:
+                folder.rmdir()
+            except OSError:
+                print(f"Note: empty folder could not be removed, delete it by hand: {folder}")
+
+    own = add_photo_folder(CAMERA_PHOTOS_DIR, "mycam", True, out, counts)
+    extra = add_photo_folder(EXTRA_PHOTOS_DIR, "extra", False, out, counts)
+    print(f"Photos added: {own} from my_camera_photos/, {extra} from extra_training_photos/")
+    print()
 
     classes = sorted({name for _, name in counts})
     print(f"{'':8}" + "".join(f"{c:>13}" for c in classes) + f"{'total':>9}")

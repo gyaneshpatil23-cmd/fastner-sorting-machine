@@ -8,6 +8,7 @@ WHAT THIS FILE DOES
 MAIN PARTS
     - Width-profile helpers: separate a bolt/screw outline into head and shank
     - Trust check: refuses to measure when the outline found is background, not a part
+    - outline_has_corners(): tells a round washer outline from a six-sided nut outline
     - measure_fastener(): bolt and screw -> length, shank diameter, head width; nut and washer -> hole diameter, outer diameter
     - detect_multiple_fasteners(): finds every separate part in one image
     - draw_calibrated_overlay(): draws the box, dimension lines and decision badge on the image
@@ -36,6 +37,33 @@ from backend.app_logging import app_logger
 # 1.05 - 1.16 (1.4 for a fully threaded bolt with every thread crest showing); patches of wood grain
 # and shadow that were wrongly picked up as the part measured 1.6 - 2.3.
 MAX_OUTLINE_ROUGHNESS = 1.5
+
+# A standard hex nut is at least 1.5 times as wide across its flats as its threaded hole (M12: 18 / 12).
+# A smaller ratio means only the dark thread ring was picked up, not the whole nut.
+MIN_NUT_WIDTH_TO_HOLE = 1.35
+
+# How far an outline strays from the ellipse that fits it best. Round washers measure 0.002 - 0.012,
+# six-sided nuts 0.039 - 0.047, seen from straight above or at an angle.
+CORNERED_OUTLINE_THRESHOLD = 0.025
+
+
+# ============================================================================
+# SHAPE CHECK
+# Tells a round outline (washer) from one with flat sides and corners (hex nut).
+# ============================================================================
+def outline_has_corners(contour: Optional[np.ndarray]) -> bool:
+    if contour is None or len(contour) < 20:
+        return False
+    points = contour.reshape(-1, 2).astype(np.float64)
+    (cx, cy), (width, height), angle = cv2.fitEllipse(contour)
+    if min(width, height) < 4:
+        return False
+    # Distance of every outline point from the centre, in units of the fitted ellipse: all 1.0 for a round part
+    theta = math.radians(angle)
+    x = (points[:, 0] - cx) * math.cos(theta) + (points[:, 1] - cy) * math.sin(theta)
+    y = -(points[:, 0] - cx) * math.sin(theta) + (points[:, 1] - cy) * math.cos(theta)
+    radius = np.sqrt((x / (width / 2)) ** 2 + (y / (height / 2)) ** 2)
+    return float(radius.std()) > CORNERED_OUTLINE_THRESHOLD
 
 # ============================================================================
 # WIDTH-PROFILE HELPERS
@@ -225,6 +253,17 @@ class FastenerDimensionEngine:
         # Fallback inner hole calculation if hierarchy did not separate hole
         if inner_dia_px == 0.0 and category in [CATEGORY_NUT, CATEGORY_WASHER]:
             inner_dia_px = width_px * 0.45
+
+        # Ring check: a nut or washer barely wider than its own hole is not a whole part
+        if (category in [CATEGORY_NUT, CATEGORY_WASHER] and inner_cnt_full is not None
+                and width_px / max(1.0, inner_dia_px) < MIN_NUT_WIDTH_TO_HOLE):
+            return {
+                "success": False,
+                "category": category,
+                "bbox": (rx, ry, rw, rh),
+                "error": ("Only a thin dark ring round the hole could be found, not the part's outer edge: the part "
+                          "is too close in brightness to the background. Use a background that contrasts with the part."),
+            }
 
         # Type-specific measurements
         measurements: Dict[str, Any] = {

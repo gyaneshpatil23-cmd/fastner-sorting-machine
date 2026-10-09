@@ -12,6 +12,7 @@ WHAT THIS FILE DOES
 MAIN PARTS
     - FastenerInspectionWorker: the background thread that performs the five steps above
     - Sort-by-type mode: step 3 only picks the bin for the fastener type; sizes are shown but not judged
+    - Shape cross-check: a 'washer' whose outline has corners is corrected to a nut
     - FastenerClassifierManager: what the UI calls to start an inspection; also keeps the batch counters
 
 USED BY
@@ -32,7 +33,7 @@ from backend.app_config import (
 from backend.gemini_cloud_classifier import GeminiVisionClient
 from backend.opencv_shape_classifier import LocalFastenerClassifier
 from backend.yolo_classifier import yolo_classifier
-from backend.opencv_measurement import dimension_engine
+from backend.opencv_measurement import dimension_engine, outline_has_corners
 from backend.tolerance_and_bin_decision import verification_engine
 from backend.esp32_communication import hardware_manager
 from backend.sqlite_database import db_instance
@@ -104,8 +105,21 @@ class FastenerInspectionWorker(QThread):
             confidence = float(class_res.get("confidence", 0.0))
 
             # 2. Step 2: Calibrated Dimensional Measurement (OpenCV)
-            # Measure the same object the classifier picked, not just the largest blob in the frame
-            meas_res = dimension_engine.measure_fastener(self.cv_img, category, roi_bbox=class_res.get("roi"))
+            # The OpenCV classifier returns a box round the part, so the same object is measured.
+            # YOLO only reports which region of the picture it looked at (it may lie inside the part),
+            # so after YOLO the part is found again in the whole picture.
+            measure_roi = class_res.get("roi") if is_local else None
+            meas_res = dimension_engine.measure_fastener(self.cv_img, category, roi_bbox=measure_roi)
+
+            # Cross-check the class against the measured shape: a washer is round, so an outline with
+            # flat sides and corners is a nut, however sure the classifier was
+            if category == CATEGORY_WASHER and meas_res.get("success") and outline_has_corners(meas_res.get("contour")):
+                class_res["reason"] = (
+                    "Shape check: the outline has flat sides and corners, so this is a NUT, not a WASHER. "
+                    f"[{class_res.get('reason', '')}]"
+                )
+                category = CATEGORY_NUT
+                meas_res = dimension_engine.measure_fastener(self.cv_img, category, roi_bbox=measure_roi)
 
             if self.identify_only:
                 # Sort-by-type mode: the bin is chosen from the fastener type; sizes are shown but not judged

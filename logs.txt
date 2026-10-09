@@ -946,3 +946,71 @@
 [2026-10-09 15:38:46] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 2.54.32 PM.jpeg
 [2026-10-09 15:38:50] [DECISION] IDENTIFIED: SCREW -> Tray 0 (0°)
 [2026-10-09 15:43:27] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 17:20:18] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 17:20:18] [MAIN] Desktop application GUI loop started.
+[2026-10-09 17:22:07] [IMAGE] Loaded image file: F5081177-01.webp
+[2026-10-09 17:22:24] [DECISION] IDENTIFIED: BOLT -> Tray 0 (0°)
+[2026-10-09 17:22:44] [IMAGE] Loaded image file: images.jpg.jpeg
+[2026-10-09 17:22:45] [DECISION] IDENTIFIED: WASHER -> Tray 0 (0°)
+[2026-10-09 17:23:03] [IMAGE] Loaded image file: 360_F_573366182_EFqaUPjOxpOvT8WJs9ZjoFXdbmnsodGh.jpg.jpeg
+[2026-10-09 17:23:06] [DECISION] IDENTIFIED: SCREW -> Tray 0 (0°)
+[2026-10-09 17:23:23] [IMAGE] Loaded image file: images (1).jpg.jpeg
+[2026-10-09 17:23:25] [DECISION] IDENTIFIED: NUT -> Tray 1 (25°)
+[2026-10-09 17:23:25] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 17:23:25] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:23:26] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:23:27] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:23:43] [IMAGE] Loaded image file: one-metal-nut-white-background-one-metal-nut-white-background-top-view-247612008.webp
+[2026-10-09 17:23:46] [DECISION] IDENTIFIED: NUT -> Tray 1 (25°)
+[2026-10-09 17:23:46] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 17:23:47] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:23:47] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:23:48] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:24:10] [IMAGE] Loaded image file: one-metal-nut-white-background-one-metal-nut-white-background-top-view-247612008.webp
+[2026-10-09 17:24:15] [IMAGE] Loaded image file: bolt.webp
+[2026-10-09 17:24:47] [IMAGE] Loaded image file: Types-of-fasteners-Screws.jpg.jpeg
+[2026-10-09 17:25:00] [IMAGE] Loaded image file: bolts.jpg.jpeg
+[2026-10-09 17:31:48] [CONFIG] Saved customizations for 7 sorting bins.
+[2026-10-09 17:31:54] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-09 17:31:54] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:31:55] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:31:56] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:32:03] [IMAGE] Loaded image file: F5081177-01.webp
+[2026-10-09 17:32:05] [DECISION] IDENTIFIED: BOLT -> Tray 7 (180°)
+[2026-10-09 17:32:05] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-09 17:32:05] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:32:06] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:32:07] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:32:20] [IMAGE] Loaded image file: images (1).jpg.jpeg
+[2026-10-09 17:32:22] [DECISION] IDENTIFIED: NUT -> Tray 1 (25°)
+[2026-10-09 17:32:22] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 17:32:22] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:32:22] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:32:24] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:32:35] [CONFIG] Multi-fastener inspection mode: True
+[2026-10-09 17:32:40] [IMAGE] Loaded image file: Types-of-fasteners-Screws.jpg.jpeg
+[2026-10-09 17:32:41] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-09 17:32:42] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:32:42] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:32:44] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:32:44] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-09 17:32:44] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:32:44] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:32:46] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:32:46] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-09 17:32:46] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:32:47] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:32:48] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:32:48] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-09 17:32:48] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 17:32:49] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 17:32:50] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 17:36:38] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 18:17:44] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 18:17:44] [MAIN] Desktop application GUI loop started.
+[2026-10-09 18:18:43] [DECISION] IDENTIFIED: BOLT -> Tray 7 (180°)
+[2026-10-09 18:18:43] [HARDWARE_CMD] {"command": "SORT", "tray": 7, "angle": 180}
+[2026-10-09 18:18:43] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 18:18:44] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 18:18:45] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 18:20:04] [SHUTDOWN] Application closed cleanly.
