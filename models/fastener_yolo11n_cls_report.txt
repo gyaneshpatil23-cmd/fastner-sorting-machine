@@ -1,0 +1,39 @@
+Dataset: fastener_sorter_cls
+
+Split: val   Images: 515   Accuracy: 513/515 = 99.6%
+
+class         precision    recall      F1  images
+BOLT               1.00      0.98    0.99      95
+NO_FASTENER        1.00      1.00    1.00      89
+NUT                1.00      1.00    1.00     110
+RIVET              1.00      1.00    1.00      43
+SCREW              0.98      1.00    0.99      96
+WASHER             1.00      1.00    1.00      82
+
+Confusion matrix (rows = true class, columns = predicted class)
+                      BOLT  NO_FASTENER          NUT        RIVET        SCREW       WASHER
+BOLT                    93            0            0            0            2            0
+NO_FASTENER              0           89            0            0            0            0
+NUT                      0            0          110            0            0            0
+RIVET                    0            0            0           43            0            0
+SCREW                    0            0            0            0           96            0
+WASHER                   0            0            0            0            0           82
+
+Split: test   Images: 234   Accuracy: 232/234 = 99.1%
+
+class         precision    recall      F1  images
+BOLT               1.00      1.00    1.00      52
+NO_FASTENER        1.00      1.00    1.00      46
+NUT                0.95      1.00    0.97      38
+RIVET              1.00      0.97    0.98      32
+SCREW              1.00      1.00    1.00      42
+WASHER             1.00      0.96    0.98      24
+
+Confusion matrix (rows = true class, columns = predicted class)
+                      BOLT  NO_FASTENER          NUT        RIVET        SCREW       WASHER
+BOLT                    52            0            0            0            0            0
+NO_FASTENER              0           46            0            0            0            0
+NUT                      0            0           38            0            0            0
+RIVET                    0            0            1           31            0            0
+SCREW                    0            0            0            0           42            0
+WASHER                   0            0            1            0            0           23

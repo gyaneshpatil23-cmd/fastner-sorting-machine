@@ -1,0 +1,11 @@
+{
+  "classes": [
+    "BOLT",
+    "NO_FASTENER",
+    "NUT",
+    "RIVET",
+    "SCREW",
+    "WASHER"
+  ],
+  "imgsz": 224
+}

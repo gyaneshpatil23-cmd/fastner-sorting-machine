@@ -20,7 +20,10 @@
 #include <ESP32Servo.h>
 #include <ArduinoJson.h>
 
-// Pin Definitions
+// ===========================================================================
+// PIN NUMBERS
+// Which ESP32 pin each servo, driver and sensor is wired to.
+// ===========================================================================
 #define PIN_PAD_SERVO       18
 #define PIN_CHUTE_SERVO     19
 #define PIN_STEPPER_STEP    22
@@ -34,18 +37,27 @@
 Servo padServo;
 Servo chuteServo;
 
-// Wi-Fi Configuration
+// ===========================================================================
+// WI-FI ACCESS POINT
+// Network name, password and TCP port the laptop connects to.
+// ===========================================================================
 const char* ap_ssid = "FastenerInspection-ESP32";
 const char* ap_pass = "fastener123";
 WiFiServer tcpServer(8080);
 WiFiClient client;
 
-// State Machine Variables
+// ===========================================================================
+// CURRENT MACHINE STATE
+// ===========================================================================
 bool isEstopped = false;
 int currentChuteAngle = 0;
 int currentPadAngle = 0;
 bool conveyorRunning = false;
 
+// ===========================================================================
+// SETUP
+// Runs once at power-on: pins, servos, home positions, Wi-Fi.
+// ===========================================================================
 void setup() {
   Serial.begin(115200);
   delay(500);
@@ -82,6 +94,10 @@ void setup() {
   Serial.println("{\"status\":\"READY\",\"ip\":\"192.168.4.1\"}");
 }
 
+// ===========================================================================
+// MAIN LOOP
+// Runs forever: wait for a command from USB serial or Wi-Fi.
+// ===========================================================================
 void loop() {
   // Check USB Serial input
   if (Serial.available() > 0) {
@@ -106,6 +122,10 @@ void loop() {
   delay(10);
 }
 
+// ===========================================================================
+// COMMAND HANDLER
+// Decode one JSON command and act on it.
+// ===========================================================================
 void processCommand(String jsonStr) {
   StaticJsonDocument<512> doc;
   DeserializationError error = deserializeJson(doc, jsonStr);
@@ -185,6 +205,10 @@ void processCommand(String jsonStr) {
   }
 }
 
+// ===========================================================================
+// CONVEYOR
+// Step the NEMA 17 motor for a fixed time.
+// ===========================================================================
 void runConveyorStepper(int duration_ms) {
   digitalWrite(PIN_STEPPER_EN, LOW); // Enable driver
   digitalWrite(PIN_STEPPER_DIR, HIGH); // Forward direction
@@ -203,6 +227,10 @@ void runConveyorStepper(int duration_ms) {
   conveyorRunning = false;
 }
 
+// ===========================================================================
+// REPLIES TO THE LAPTOP
+// Acknowledgement after a command, and the telemetry status message.
+// ===========================================================================
 void sendAck(const char* cmd, int val, int tray) {
   StaticJsonDocument<256> resp;
   resp["ack"] = cmd;

@@ -24,36 +24,44 @@ This application is a complete industrial inspection and sorting system built wi
 ```text
 fastener_vision/
 │
-├── main.py                         # Master Application Entry Point
-├── test_app.py                     # Automated test suite
+├── main.py                             # START HERE: opens the desktop app
+├── run_all_tests.py                    # Automated test suite (8 checks)
+├── build_classifier_dataset.py         # Roboflow download -> fastener_sorter_cls/ (one folder per class)
+├── train_yolo_classifier.py            # Trains and tests the YOLO11n-cls model -> models/
 │
-├── backend/
-│   ├── config.py                   # Environment variables, constants & thresholds
-│   ├── logger.py                   # Structured logging & session tracking
-│   ├── database.py                 # SQLite database (ISO specs, 10 trays, audit logs)
-│   ├── dimensional_measurement.py  # Calibrated OpenCV geometric measurement engine
-│   ├── verification_engine.py      # Tolerance evaluation & 10-tray chute angle mapping
-│   ├── hardware_comm.py            # ESP32 Wi-Fi / USB Serial & live hardware simulator
-│   ├── local_classifier.py         # OpenCV geometric feature classifier (100% offline)
-│   ├── gemini_client.py            # Optional cloud vision fallback
-│   ├── camera.py                   # Multi-device camera manager with external cam preference
-│   ├── classifier.py               # Asynchronous QThread inspection orchestrator
-│   └── image_utils.py              # Image loading, annotation & sample dataset generation
+├── backend/                            # Everything that is not a window or button
+│   ├── app_config.py                   # Settings & constants: categories, thresholds, paths, model list
+│   ├── app_logging.py                  # Log files: logs/application.log and logs.txt
+│   ├── sqlite_database.py              # All database reads/writes (specs, bins, history, calibration, settings)
+│   ├── camera_capture.py               # Live camera thread and camera discovery
+│   ├── image_loading_and_overlays.py   # Load images, convert for display, draw boxes/labels, demo samples
+│   ├── yolo_classifier.py              # Trained YOLO11n-cls classifier (works on ordinary camera photos)
+│   ├── opencv_shape_classifier.py      # Offline classifier: OpenCV shape rules -> NUT/BOLT/SCREW/WASHER
+│   ├── gemini_cloud_classifier.py      # Optional online classifier using Google Gemini
+│   ├── opencv_measurement.py           # Measures the part in millimetres with OpenCV
+│   ├── tolerance_and_bin_decision.py   # Tolerance check -> ACCEPT / REINSPECT / REJECT and which bin
+│   ├── inspection_pipeline.py          # Runs one full inspection: classify -> measure -> verify -> save -> sort
+│   └── esp32_communication.py          # Talks to the ESP32 over USB / Wi-Fi, plus the built-in simulator
 │
-├── frontend/
-│   ├── main_window.py              # Master Multi-Tabbed Industrial Dashboard
-│   ├── result_panel.py             # Live dimensional readouts, matched size & decision badge
-│   ├── hardware_panel.py           # Live ESP32 telemetry, servo & conveyor testing
-│   ├── specification_panel.py      # ISO specifications & tolerance database table
-│   ├── trays_panel.py              # 10 Sorting Trays chute configuration & fill gauges
-│   ├── calibration_panel.py        # Pixel-to-mm camera scale calibration
-│   ├── history_panel.py            # Quality audit logs with CSV export
-│   ├── settings_dialog.py          # Gemini API key & model settings
-│   └── styles.py                   # Clean industrial engineering stylesheet
+├── frontend/                           # Windows, tabs and buttons (PySide6)
+│   ├── main_window.py                  # Main window, header bar and Tab 1 (Live Inspection)
+│   ├── inspection_result_panel.py      # Result panel on the right of Tab 1
+│   ├── tab_bins_and_chute_angles.py    # Tab 2: sorting bins, chute angles, capacities
+│   ├── tab_hardware_control.py         # Tab 3: ESP32 connection, live status, manual motor tests
+│   ├── tab_iso_specifications.py       # Tab 4: standard sizes and tolerance limits
+│   ├── tab_camera_calibration.py       # Tab 5: millimetres-per-pixel camera scale
+│   ├── tab_inspection_history.py       # Tab 6: inspection history table and CSV export
+│   ├── ai_settings_dialog.py           # Settings window: AI model and Gemini API key
+│   └── app_stylesheet.py               # Colours, fonts and button styles
 │
-├── firmware_esp32/                 # ESP32 sorter firmware (Arduino sketch)
-├── sample_images/                  # Built-in demo sample images (M8 Bolt, Nut, Screw, Washer)
-└── logs.txt                        # Step-by-step execution log
+├── models/                             # Trained YOLO model, its class list and its test report
+├── FASTENER SORTER.v3i.yolov11/        # Downloaded Roboflow dataset (photos with labelled boxes)
+├── fastener_sorter_cls/                # Training images built from it, one folder per class
+├── my_camera_photos/                   # Photos saved with 'Save Photo for Training' (created on first save)
+├── training_runs/                      # Output of the last training run
+├── firmware_esp32/                     # ESP32 sorter firmware (Arduino sketch)
+├── sample_images/                      # Built-in demo sample images (M8 Bolt, Nut, Screw, Washer)
+└── logs.txt                            # Step-by-step execution log
 ```
 
 ---
@@ -67,8 +75,25 @@ python main.py
 
 Run the automated test suite (it uses a temporary database, so your specs, bins and counters are not touched):
 ```powershell
-python test_app.py
+python run_all_tests.py
 ```
+
+### Identifying fasteners with the camera (YOLO)
+
+The app starts with the trained **YOLO11n-cls** model when `models/fastener_yolo11n_cls.pt` exists, and with the laptop's built-in camera selected.
+
+1. Click **Live Video** and hold the part inside the guide box in the middle of the picture.
+2. Leave **Sort by Type Only** ticked: the part is named, measured and sent to the bin for its type, but its size is not judged against tolerances (the measurements are only approximate until the camera is calibrated). Untick it once a calibrated inspection camera is in place.
+3. Click **INSPECT**.
+
+**Teaching the model your own parts.** If the model names a part wrongly, start Live Video, choose the correct class next to *Teach the model*, and hold **Save Photo for Training** while turning the part (aim for 50 or more photos per class, plus some of the empty scene as `NO_FASTENER`). Photos go to `my_camera_photos/` and are included the next time you rebuild and retrain.
+
+Rebuild the training images and retrain (CPU, about 35 minutes):
+```powershell
+python build_classifier_dataset.py
+python train_yolo_classifier.py
+```
+The accuracy report is written to `models/fastener_yolo11n_cls_report.txt`. To use the external inspection camera by default, set `PREFER_BUILT_IN_CAMERA = False` in `backend/app_config.py`.
 
 ---
 

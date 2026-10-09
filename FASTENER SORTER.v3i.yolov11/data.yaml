@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 6
+names: ['bolt', 'nut', 'nuts', 'rivet', 'screw', 'washer']
+
+roboflow:
+  workspace: rivet-nut-bolt-screw-washer
+  project: fastener-sorter
+  version: 3
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/rivet-nut-bolt-screw-washer/fastener-sorter/dataset/3

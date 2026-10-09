@@ -725,3 +725,224 @@
 [2026-10-06 17:05:54] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (25°)
 [2026-10-06 17:05:54] [DECISION] ACCEPT: M8 Washer -> Tray 6 (155°)
 [2026-10-06 17:05:55] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 11:22:44] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 11:22:45] [MAIN] Desktop application GUI loop started.
+[2026-10-09 11:37:45] [IMAGE] Loaded image file: nut_m6_001.jpg
+[2026-10-09 11:37:47] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 11:37:47] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 11:37:48] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 11:37:49] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 12:46:01] [DATABASE] Added new specification: BOLT - M8 x 45 Custom
+[2026-10-09 12:46:01] [DATABASE] Deleted specification ID #22
+[2026-10-09 12:46:01] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-10-09 12:46:01] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-10-09 12:46:01] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-10-09 12:46:01] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-10-09 12:46:01] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 12:46:01] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 12:46:01] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 12:46:01] [DECISION] ACCEPT: M8 Washer -> Tray 7 (126°)
+[2026-10-09 12:46:01] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 12:46:01] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 65}
+[2026-10-09 12:46:02] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 12:46:03] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 12:46:03] [TESTS] All 7 extended industrial suite verification tests passed.
+[2026-10-09 12:50:53] [DATABASE] Added new specification: BOLT - M8 x 45 Custom
+[2026-10-09 12:50:53] [DATABASE] Deleted specification ID #22
+[2026-10-09 12:50:53] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-10-09 12:50:53] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-10-09 12:50:53] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-10-09 12:50:53] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-10-09 12:50:53] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 12:50:53] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 12:50:53] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 12:50:53] [DECISION] ACCEPT: M8 Washer -> Tray 7 (126°)
+[2026-10-09 12:50:53] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 12:50:53] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 65}
+[2026-10-09 12:50:54] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 12:50:55] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 12:50:55] [TESTS] All 7 extended industrial suite verification tests passed.
+[2026-10-09 12:53:06] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 13:16:07] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:16:17] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:16:17] [IMAGE] Loaded image file: IMG20240422155520_jpg.rf.6eb8a4043b0fc24_00_wide.jpg
+[2026-10-09 13:16:27] [IMAGE] Loaded image file: nut18_jpg.rf.7e668f25a6eea09a5255cd7e127_02_tight.jpg
+[2026-10-09 13:16:27] [IMAGE] Loaded image file: IMG20240507090755_jpg.rf.fa7a72b4bed3398_00_tight.jpg
+[2026-10-09 13:16:27] [IMAGE] Loaded image file: washer14_jpg.rf.5928b4f72be44f1eb0f3ca65_02_wide.jpg
+[2026-10-09 13:16:28] [IMAGE] Loaded image file: rivet22_jpg.rf.c9e6e5afa741188b73b63c1fb_01_tight.jpg
+[2026-10-09 13:16:28] [IMAGE] Loaded image file: IMG20240422162731_jpg.rf.9e89d1bc6c15688_empty1.jpg
+[2026-10-09 13:16:28] [CONFIG] Identify-only mode: False
+[2026-10-09 13:16:28] [IMAGE] Loaded image file: sample_01_hex_nut.png
+[2026-10-09 13:16:28] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 13:16:28] [HARDWARE_CMD] {"command": "SORT", "tray": 4, "angle": 72}
+[2026-10-09 13:16:28] [IMAGE] Loaded image file: sample_02_hex_bolt.png
+[2026-10-09 13:16:28] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 13:16:28] [IMAGE] Loaded image file: sample_03_wood_screw.png
+[2026-10-09 13:16:28] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 13:16:28] [IMAGE] Loaded image file: sample_04_flat_washer.png
+[2026-10-09 13:16:28] [DECISION] REJECT: M8 Washer -> Tray 10 (180°)
+[2026-10-09 13:16:28] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 13:35:10] [DATABASE] Added new specification: BOLT - M8 x 45 Custom
+[2026-10-09 13:35:10] [DATABASE] Deleted specification ID #22
+[2026-10-09 13:35:10] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-10-09 13:35:10] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-10-09 13:35:10] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-10-09 13:35:10] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-10-09 13:35:10] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 13:35:10] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 13:35:10] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 13:35:10] [DECISION] ACCEPT: M8 Washer -> Tray 7 (126°)
+[2026-10-09 13:35:10] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 13:35:10] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 65}
+[2026-10-09 13:35:11] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:35:12] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 13:35:15] [TESTS] All 8 extended industrial suite verification tests passed.
+[2026-10-09 13:35:19] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:35:19] [IMAGE] Loaded image file: IMG20240422155520_jpg.rf.6eb8a4043b0fc24_00_wide.jpg
+[2026-10-09 13:35:22] [IMAGE] Loaded image file: nut18_jpg.rf.7e668f25a6eea09a5255cd7e127_02_tight.jpg
+[2026-10-09 13:35:22] [IMAGE] Loaded image file: IMG20240507090755_jpg.rf.fa7a72b4bed3398_00_tight.jpg
+[2026-10-09 13:35:22] [IMAGE] Loaded image file: washer14_jpg.rf.5928b4f72be44f1eb0f3ca65_02_wide.jpg
+[2026-10-09 13:35:23] [IMAGE] Loaded image file: rivet22_jpg.rf.c9e6e5afa741188b73b63c1fb_01_tight.jpg
+[2026-10-09 13:35:23] [IMAGE] Loaded image file: IMG20240422162731_jpg.rf.9e89d1bc6c15688_empty1.jpg
+[2026-10-09 13:35:23] [CONFIG] Identify-only mode: False
+[2026-10-09 13:35:23] [IMAGE] Loaded image file: sample_01_hex_nut.png
+[2026-10-09 13:35:23] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 13:35:23] [HARDWARE_CMD] {"command": "SORT", "tray": 4, "angle": 72}
+[2026-10-09 13:35:23] [IMAGE] Loaded image file: sample_02_hex_bolt.png
+[2026-10-09 13:35:23] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 13:35:23] [IMAGE] Loaded image file: sample_03_wood_screw.png
+[2026-10-09 13:35:23] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 13:35:23] [IMAGE] Loaded image file: sample_04_flat_washer.png
+[2026-10-09 13:35:23] [DECISION] ACCEPT: M8 Washer -> Tray 7 (126°)
+[2026-10-09 13:35:23] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 13:38:39] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:38:40] [MAIN] Desktop application GUI loop started.
+[2026-10-09 13:43:02] [IMAGE] Loaded image file: IMG20240422101341_jpg.rf.d4eecaa2f5cfaa0af0434872201ffaa5.jpg
+[2026-10-09 13:50:35] [CONFIG] Multi-fastener inspection mode: True
+[2026-10-09 13:50:48] [IMAGE] Loaded image file: IMG20240422112246_jpg.rf.5b0b77be4461b6b0333dbd5bf48f49c6.jpg
+[2026-10-09 13:51:08] [SYSTEM] Batch counters reset.
+[2026-10-09 13:51:34] [IMAGE] Loaded image file: IMG20240507090809_jpg.rf.364d006be4b7382378dd3b864e0d5d56.jpg
+[2026-10-09 13:52:42] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 13:53:20] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:53:20] [MAIN] Desktop application GUI loop started.
+[2026-10-09 13:53:44] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:53:44] [MAIN] Desktop application GUI loop started.
+[2026-10-09 13:53:45] [DATABASE] Added new specification: BOLT - M8 x 45 Custom
+[2026-10-09 13:53:45] [DATABASE] Deleted specification ID #22
+[2026-10-09 13:53:45] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-10-09 13:53:45] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-10-09 13:53:45] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-10-09 13:53:45] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-10-09 13:53:45] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 13:53:45] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 13:53:45] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 13:53:45] [DECISION] ACCEPT: M8 Washer -> Tray 7 (126°)
+[2026-10-09 13:53:45] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 13:53:45] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 65}
+[2026-10-09 13:53:46] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 13:53:47] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 13:53:54] [TESTS] All 8 extended industrial suite verification tests passed.
+[2026-10-09 14:42:45] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 14:44:46] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 14:44:47] [MAIN] Desktop application GUI loop started.
+[2026-10-09 14:44:59] [IMAGE] Loaded image file: bolt6_jpg.rf.ae9dd517a1ae43822383589cf7d_00_tight.jpg
+[2026-10-09 14:48:11] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 14:48:11] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 14:48:20] [DATABASE] Added new specification: BOLT - M8 x 45 Custom
+[2026-10-09 14:48:20] [DATABASE] Deleted specification ID #22
+[2026-10-09 14:48:20] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-10-09 14:48:20] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-10-09 14:48:20] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-10-09 14:48:20] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-10-09 14:48:20] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 14:48:20] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 14:48:20] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 14:48:20] [DECISION] ACCEPT: M8 Washer -> Tray 7 (126°)
+[2026-10-09 14:48:20] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 14:48:20] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 65}
+[2026-10-09 14:48:21] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 14:48:22] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 14:48:26] [TESTS] All 8 extended industrial suite verification tests passed.
+[2026-10-09 14:53:40] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 14:53:49] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 14:53:49] [MAIN] Desktop application GUI loop started.
+[2026-10-09 14:55:02] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 2.54.32 PM.jpeg
+[2026-10-09 14:55:46] [IMAGE] Loaded image file: sample_01_hex_nut.png
+[2026-10-09 14:55:53] [IMAGE] Loaded image file: sample_02_hex_bolt.png
+[2026-10-09 14:56:02] [IMAGE] Loaded image file: sample_04_flat_washer.png
+[2026-10-09 14:56:09] [IMAGE] Loaded image file: sample_03_wood_screw.png
+[2026-10-09 14:56:14] [IMAGE] Loaded image file: sample_04_flat_washer.png
+[2026-10-09 14:57:10] [IMAGE] Loaded image file: images (1).jpg
+[2026-10-09 14:57:21] [IMAGE] Loaded image file: images.jpg
+[2026-10-09 14:57:42] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 2.54.32 PM.jpeg
+[2026-10-09 15:00:23] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 15:04:14] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 15:04:14] [MAIN] Desktop application GUI loop started.
+[2026-10-09 15:04:22] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 2.54.32 PM.jpeg
+[2026-10-09 15:04:26] [DECISION] IDENTIFIED: SCREW -> Tray 1 (25°)
+[2026-10-09 15:04:26] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 15:04:27] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:04:27] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:04:28] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:06:54] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 3.06.34 PM (1).jpeg
+[2026-10-09 15:06:55] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 15:06:55] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:06:56] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:06:57] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:06:57] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 15:06:57] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:06:58] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:06:59] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:06:59] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 15:07:00] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:07:00] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:07:01] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:07:03] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 3.06.34 PM.jpeg
+[2026-10-09 15:07:05] [DECISION] IDENTIFIED: BOLT -> Tray 2 (50°)
+[2026-10-09 15:07:05] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 50}
+[2026-10-09 15:07:05] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:07:06] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:07:07] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:19:02] [DATABASE] Added new specification: BOLT - M8 x 45 Custom
+[2026-10-09 15:19:03] [DATABASE] Deleted specification ID #22
+[2026-10-09 15:19:03] [HARDWARE_CMD] {"command": "ESTOP", "action": "HALT_ALL"}
+[2026-10-09 15:19:03] [ESTOP] EMERGENCY STOP ACTIVATED - All hardware motion halted!
+[2026-10-09 15:19:03] [HARDWARE_CMD] {"command": "RESET_ESTOP"}
+[2026-10-09 15:19:03] [ESTOP] Emergency Stop reset. System returned to READY.
+[2026-10-09 15:19:03] [DECISION] ACCEPT: M8 Nut -> Tray 4 (72°)
+[2026-10-09 15:19:03] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 15:19:03] [DECISION] ACCEPT: M4 x 20 Screw -> Tray 9 (162°)
+[2026-10-09 15:19:03] [DECISION] ACCEPT: M8 Washer -> Tray 7 (126°)
+[2026-10-09 15:19:03] [DECISION] ACCEPT: M8 x 40 -> Tray 1 (18°)
+[2026-10-09 15:19:03] [HARDWARE_CMD] {"command": "SORT", "tray": 2, "angle": 65}
+[2026-10-09 15:19:04] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 15:19:05] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 15:19:09] [TESTS] All 8 extended industrial suite verification tests passed.
+[2026-10-09 15:19:32] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 15:28:31] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 15:28:31] [MAIN] Desktop application GUI loop started.
+[2026-10-09 15:29:15] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 3.06.34 PM (1).jpeg
+[2026-10-09 15:29:19] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 2.54.32 PM.jpeg
+[2026-10-09 15:29:23] [DECISION] IDENTIFIED: SCREW -> Tray 1 (25°)
+[2026-10-09 15:29:23] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 15:29:24] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:29:24] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:29:25] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:30:35] [CONFIG] Saved customizations for 7 sorting bins.
+[2026-10-09 15:30:39] [DECISION] IDENTIFIED: SCREW -> Tray 1 (25°)
+[2026-10-09 15:30:39] [HARDWARE_CMD] {"command": "SORT", "tray": 1, "angle": 25}
+[2026-10-09 15:30:39] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:30:40] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:30:41] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:30:55] [CONFIG] Saved customizations for 7 sorting bins.
+[2026-10-09 15:30:59] [DECISION] IDENTIFIED: SCREW -> Tray 5 (128°)
+[2026-10-09 15:30:59] [HARDWARE_CMD] {"command": "SORT", "tray": 5, "angle": 128}
+[2026-10-09 15:31:00] [HARDWARE_CMD] {"command": "TILT_PAD", "angle": 45}
+[2026-10-09 15:31:00] [HARDWARE_CMD] {"command": "CONVEYOR", "action": "RUN", "duration_ms": 1200}
+[2026-10-09 15:31:02] [HARDWARE_CMD] {"command": "RESET"}
+[2026-10-09 15:31:07] [SHUTDOWN] Application closed cleanly.
+[2026-10-09 15:38:40] [STARTUP] Industrial Fastener Inspection Workstation initialized.
+[2026-10-09 15:38:40] [MAIN] Desktop application GUI loop started.
+[2026-10-09 15:38:46] [IMAGE] Loaded image file: WhatsApp Image 2026-10-09 at 2.54.32 PM.jpeg
+[2026-10-09 15:38:50] [DECISION] IDENTIFIED: SCREW -> Tray 0 (0°)
+[2026-10-09 15:43:27] [SHUTDOWN] Application closed cleanly.

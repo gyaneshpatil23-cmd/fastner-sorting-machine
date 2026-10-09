@@ -158,7 +158,7 @@ manual sorting errors and establishing automated quality logging."
               | (RGB Frames / 30 FPS)
               v
   +-------------------------------------------------------+
-  | Image Preprocessing Subsystem (image_utils.py)        |
+  | Image Preprocessing (image_loading_and_overlays.py)   |
   | - BGR to Grayscale Conversion                         |
   | - Gaussian Noise Filtering & Contrast Equalization    |
   | - Otsu / Adaptive Binary Thresholding                 |
@@ -180,7 +180,8 @@ manual sorting errors and establishing automated quality logging."
   +-----------------------+       +-----------------------+
   | Mode 1: Local Vision  |       | Mode 2: Cloud Gemini  |
   | Geometry Classifier   |       | Multimodal AI Client  |
-  | (local_classifier.py) |       | (gemini_client.py)    |
+  | (opencv_shape_        |       | (gemini_cloud_        |
+  |  classifier.py)       |       |  classifier.py)       |
   | - Zero Latency (<5ms) |       | - Deep Vision LLM     |
   | - 100% Offline Ops    |       | - Structured JSON API |
   +-----------+-----------+       +-----------+-----------+
@@ -208,7 +209,7 @@ manual sorting errors and establishing automated quality logging."
 ---------------------------------
 1. Image Acquisition:
    A high-resolution optical camera captures frames of fasteners positioned on a 
-   conveyor or static inspection pad. The `camera.py` module manages acquisition 
+   conveyor or static inspection pad. The `camera_capture.py` module manages acquisition 
    in a dedicated background `QThread` to prevent GUI stutters.
 
 2. Preprocessing & Segmentation:

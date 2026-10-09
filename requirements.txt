@@ -7,3 +7,7 @@ python-dotenv>=1.0.0
 numpy>=1.24.0
 requests>=2.31.0
 pyserial>=3.5
+# YOLO classifier. torch is pinned: Windows Smart App Control blocked the newest build (2.14) on the dev laptop.
+torch==2.10.0
+torchvision==0.25.0
+ultralytics>=8.3.0
